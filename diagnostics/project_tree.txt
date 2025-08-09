@@ -1,0 +1,84 @@
+Generated on 2025-08-08 14:33:26 by root
+
+=== ДЕРЕВО ПРОЕКТА ===
+.
+├── build
+│   ├── bdist.linux-x86_64
+│   └── lib
+│       └── socks5tun
+│           ├── config.py
+│           ├── dummy_tun.py
+│           ├── __init__.py
+│           ├── logger.py
+│           ├── run.py
+│           ├── server.py
+│           └── udp_handler.py
+├── dist
+│   ├── .tmp-4m9o8ejv
+│   └── socks5tun-0.1-py3-none-any.whl
+├── .github
+│   └── workflows
+│       └── test.yml
+├── __pycache__
+│   ├── config.cpython-312.pyc
+│   ├── dummy_tun.cpython-312.pyc
+│   ├── logger.cpython-312.pyc
+│   ├── server.cpython-312.pyc
+│   ├── test_socks.cpython-312-pytest-8.4.1.pyc
+│   └── udp_handler.cpython-312.pyc
+├── socks5tun
+│   ├── __pycache__
+│   │   ├── config.cpython-312.pyc
+│   │   ├── dummy_tun.cpython-312.pyc
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── logger.cpython-312.pyc
+│   │   ├── run.cpython-312.pyc
+│   │   ├── server.cpython-312.pyc
+│   │   └── udp_handler.cpython-312.pyc
+│   ├── config.py
+│   ├── dummy_tun.py
+│   ├── __init__.py
+│   ├── logger.py
+│   ├── run.py
+│   ├── server.py
+│   └── udp_handler.py
+├── socks5tun.egg-info
+│   ├── dependency_links.txt
+│   ├── PKG-INFO
+│   ├── SOURCES.txt
+│   └── top_level.txt
+├── tests
+│   ├── __pycache__
+│   │   ├── test_config.cpython-312-pytest-8.4.1.pyc
+│   │   ├── test_dummy_tun.cpython-312-pytest-8.4.1.pyc
+│   │   ├── test_integration_dummy.cpython-312-pytest-8.4.1.pyc
+│   │   ├── test_linux_tun.cpython-312-pytest-8.4.1.pyc
+│   │   ├── test_logger.cpython-312-pytest-8.4.1.pyc
+│   │   ├── test_run.cpython-312-pytest-8.4.1.pyc
+│   │   ├── test_server.cpython-312-pytest-8.4.1.pyc
+│   │   ├── test_socks.cpython-312-pytest-8.4.1.pyc
+│   │   ├── test_udp_handler.cpython-312-pytest-8.4.1.pyc
+│   │   └── test_udp_socks5.cpython-312-pytest-8.4.1.pyc
+│   ├── test_config.py
+│   ├── test_dummy_tun.py
+│   ├── test_integration_dummy.py
+│   ├── test_linux_tun.py
+│   ├── test_logger.py
+│   ├── test_run.py
+│   ├── test_server.py
+│   ├── test_socks.py
+│   ├── test_udp_handler.py
+│   └── test_udp_socks5.py
+├── .vscode
+│   ├── launch.json
+│   └── settings.json
+├── config_dev.json
+├── config_prod.json
+├── help.txt
+├── pytest.ini
+├── README.md
+├── setup.py
+├── socks5tun.code-workspace
+└── udo ss -plntu | grep :53
+
+16 directories, 63 files

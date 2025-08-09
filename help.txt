@@ -1,0 +1,42 @@
+# Активировать окружение на сервере:
+source /opt/venv-pyroute/bin/activate
+
+# Архивировать папку tests
+zip -r tests_with_ci.zip tests .github/workflows/test.yml
+
+# Создать txt файл с содержимым test + ДЕРЕВО
+./diagnostics/collect_tests.sh
+
+
+### Запуск проекта:
+## Запуска через автомат
+
+# перезапуск systemd, если были обновления systemd
+sudo systemctl daemon-reexec
+
+# обновляет конфигурацию systemd (нужно после изменения .service файла)
+sudo systemctl daemon-reload
+
+# перезапуск проекта
+sudo systemctl restart socks5tun.service
+
+# логи он-лайн
+sudo journalctl -fu socks5tun.service
+
+## Запуск вручную
+# Тестовый запуск проекта
+python -m socks5tun.run -c config_dev.json
+
+# Рабочий запуск
+python -m socks5tun.run
+
+
+### Прочее
+# stunnel на сервере
+sudo nano /etc/stunnel/stunnel.conf
+
+# Запустить тесты
+pytest -q
+
+# Вернутся в проект
+cd ~/socks5tun

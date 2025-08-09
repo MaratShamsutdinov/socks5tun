@@ -1,0 +1,22 @@
+[0;1;32m●[0m named.service - BIND Domain Name Server
+     Loaded: loaded (]8;;file://ubuntu-4gb-hel1-2/usr/lib/systemd/system/named.service/usr/lib/systemd/system/named.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Thu 2025-07-31 16:27:44 UTC; 6 days ago
+       Docs: ]8;;man:named(8)man:named(8)]8;;
+   Main PID: 632991 (named)
+     Status: "[0;1;36mrunning[0m"
+      Tasks: 8 (limit: 4540)
+     Memory: 6.6M (peak: 9.9M)
+        CPU: 14.451s
+     CGroup: /system.slice/named.service
+             └─[0;38;5;245m632991 /usr/sbin/named -f -u bind[0m
+
+Aug 05 16:27:44 ubuntu-4gb-hel1-2 named[632991]: _default: sending trust-anchor-telemetry query '_ta-4f66-9728/NULL'
+Aug 05 16:27:45 ubuntu-4gb-hel1-2 named[632991]: managed-keys-zone: Key 20326 for zone . is now trusted (acceptance timer complete)
+Aug 05 16:27:45 ubuntu-4gb-hel1-2 named[632991]: managed-keys-zone: Key 38696 for zone . is now trusted (acceptance timer complete)
+Aug 06 11:23:13 ubuntu-4gb-hel1-2 named[632991]: listening on IPv4 interface tun0, 10.8.0.1#53
+Aug 06 11:23:13 ubuntu-4gb-hel1-2 named[632991]: listening on IPv6 interface tun0, fe80::6de9:96ec:df16:38d0%274#53
+Aug 06 16:27:44 ubuntu-4gb-hel1-2 named[632991]: _default: sending trust-anchor-telemetry query '_ta-4f66-9728/NULL'
+Aug 06 16:27:45 ubuntu-4gb-hel1-2 named[632991]: managed-keys-zone: Key 20326 for zone . is now trusted (acceptance timer complete)
+Aug 06 16:27:45 ubuntu-4gb-hel1-2 named[632991]: managed-keys-zone: Key 38696 for zone . is now trusted (acceptance timer complete)
+Aug 07 04:39:24 ubuntu-4gb-hel1-2 named[632991]: no longer listening on 10.8.0.1#53
+Aug 07 04:39:24 ubuntu-4gb-hel1-2 named[632991]: no longer listening on fe80::6de9:96ec:df16:38d0%274#53

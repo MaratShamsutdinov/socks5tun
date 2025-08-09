@@ -1,0 +1,1266 @@
+Generated on 2025-08-08 14:33:26 by root
+
+[32m[INFO] === ТЕСТОВЫЕ ФАЙЛЫ ===(B[m
+
+# --- tests/test_config.py ---
+import json
+import ipaddress
+import pytest
+from socks5tun.config import load_config, Config
+
+
+def test_load_config_default_values(tmp_path):
+    config_file = tmp_path / "config_dev.json"
+    config_file.write_text(json.dumps({}))
+    cfg = load_config(str(config_file))
+    # Default values
+    assert isinstance(cfg, Config)
+    assert cfg.tcp_host == "127.0.0.1"
+    assert cfg.tcp_port == 1080
+    assert cfg.udp_host == "127.0.0.1"
+    assert cfg.udp_port == 1080
+    assert cfg.tun_mode == "dummy"
+    assert cfg.log_level == "INFO"
+    assert cfg.auth is None
+    # allowed_clients default includes all networks
+    assert any(net == ipaddress.ip_network("0.0.0.0/0") for net in cfg.allowed_clients)
+    # blocked_destinations default empty
+    assert cfg.blocked_destinations == []
+    # deny_rules derived from blocked_destinations (empty by default)
+    assert cfg.deny_rules == []
+    # allow_rules default empty
+    assert cfg.allow_rules == []
+
+
+def test_load_config_file_not_found():
+    with pytest.raises(FileNotFoundError):
+        load_config("nonexistent_file.json")
+
+
+def test_load_config_invalid_json(tmp_path):
+    config_file = tmp_path / "config_dev.json"
+    # Write invalid JSON content
+    config_file.write_text('{"tcp_port": ')
+    with pytest.raises(ValueError) as excinfo:
+        load_config(str(config_file))
+    # Should raise ValueError with message about invalid JSON
+    msg = str(excinfo.value)
+    assert "Invalid JSON configuration" in msg
+
+
+def test_load_config_outdated_keys(tmp_path):
+    config_file = tmp_path / "config_dev.json"
+    data = {"bind_host": "0.0.0.0", "bind_port": 1080}
+    config_file.write_text(json.dumps(data))
+    with pytest.raises(ValueError) as excinfo:
+        load_config(str(config_file))
+    msg = str(excinfo.value)
+    assert "tcp_host" in msg and "tcp_port" in msg
+
+
+@pytest.mark.parametrize(
+    "data, error_substring",
+    [
+        ({"tcp_host": 123}, "tcp_host must be a string"),
+        ({"tcp_port": "123"}, "tcp_port must be an integer"),
+        ({"udp_host": 123}, "udp_host must be a string"),
+        ({"udp_port": "123"}, "udp_port must be an integer"),
+        ({"tun_mode": 5}, "tun_mode must be a string"),
+        ({"tun_mode": "invalid"}, "tun_mode must be one of"),
+        ({"log_level": 10}, "log_level must be a string"),
+        ({"allowed_clients": "not_a_list"}, "allowed_clients must be a list"),
+        ({"blocked_destinations": "not_a_list"}, "blocked_destinations must be a list"),
+        ({"auth": "user"}, "auth must be an object"),
+        ({"auth": {}}, "auth must be an object"),
+    ],
+)
+def test_load_config_invalid_types(tmp_path, data, error_substring):
+    config_file = tmp_path / "config_dev.json"
+    config_file.write_text(json.dumps(data))
+    with pytest.raises(ValueError) as excinfo:
+        load_config(str(config_file))
+    assert error_substring in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "tun_value, expected_mode", [(True, "linux"), (False, "disabled")]
+)
+def test_load_config_backward_compat_tun(tmp_path, tun_value, expected_mode):
+    config_file = tmp_path / "config_dev.json"
+    config_file.write_text(json.dumps({"tun": tun_value}))
+    cfg = load_config(str(config_file))
+    assert cfg.tun_mode == expected_mode
+
+
+def test_load_config_network_lists(tmp_path):
+    data = {
+        "allowed_clients": ["10.0.0.0/8"],
+        "blocked_destinations": ["192.0.2.0/24"],
+    }
+    config_file = tmp_path / "config_dev.json"
+    config_file.write_text(json.dumps(data))
+    cfg = load_config(str(config_file))
+    # allowed_clients converted to ip_network
+    assert any(net == ipaddress.ip_network("10.0.0.0/8") for net in cfg.allowed_clients)
+    # blocked_destinations converted to ip_network and reflected in deny_rules
+    blocked_net = ipaddress.ip_network("192.0.2.0/24")
+    assert any(net == blocked_net for net, port in cfg.deny_rules)
+    # allow_rules remains empty by default
+    assert cfg.allow_rules == []
+
+
+def test_load_config_auth_fields(tmp_path):
+    creds = {"username": "user1", "password": "pass123"}
+    config_file = tmp_path / "config_dev.json"
+    config_file.write_text(json.dumps({"auth": creds}))
+    cfg = load_config(str(config_file))
+    assert cfg.auth == creds
+
+# --- tests/test_dummy_tun.py ---
+import collections
+from socks5tun.dummy_tun import DummyTun
+
+
+def test_dummy_tun_read_write_cycle():
+    tun = DummyTun()
+    tun.open()
+    # Inject data and then read it
+    data = b"hello"
+    tun.inject(data)
+    result = tun.read()
+    assert result == data
+    # Write data to tun and verify outgoing queue
+    out_data = b"world"
+    written = tun.write(out_data)
+    assert written == len(out_data)
+    assert isinstance(tun._outgoing_data, collections.deque)
+    assert tun._outgoing_data[-1] == out_data
+
+
+def test_dummy_tun_partial_read():
+    tun = DummyTun()
+    tun.open()
+    long_data = b"x" * 2000
+    tun.inject(long_data)
+    part = tun.read(1500)
+    assert len(part) == 1500
+    # The remaining data should be available on next read
+    remainder = tun.read()
+    assert remainder == b"x" * 500
+
+
+def test_dummy_tun_close_behavior():
+    tun = DummyTun()
+    tun.open()
+    # Inject data before closing
+    tun.inject(b"abc")
+    tun.close()
+    # First read should yield the remaining data
+    result = tun.read()
+    assert result == b"abc"
+    # Subsequent read returns b'' since interface is closed and no data
+    result2 = tun.read()
+    assert result2 == b""
+
+# --- tests/test_integration_dummy.py ---
+import socket
+import threading
+import struct
+import time
+import pytest
+from socks5tun.dummy_tun import DummyTun
+from socks5tun.config import Config
+from socks5tun.server import SocksServer
+from socks5tun.udp_handler import start_udp_loop, UDPHandler
+
+
+def test_udp_relay_ping_pong():
+    # Configure and start Socks5 server with DummyTun
+    cfg = Config(
+        {
+            "tcp_host": "127.0.0.1",
+            "tcp_port": 1080,
+            "udp_host": "127.0.0.1",
+            "udp_port": 1080,
+            "tun_mode": "dummy",
+        }
+    )
+    tun = DummyTun()
+    tun.open()
+    server = SocksServer(cfg, tun=tun)
+    udp_thread = threading.Thread(target=start_udp_loop, args=(cfg, tun), daemon=True)
+    server_thread = threading.Thread(target=server.start, daemon=True)
+    udp_thread.start()
+    server_thread.start()
+    time.sleep(0.1)  # give threads time to start
+    # SOCKS5 UDP Associate handshake
+    client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_tcp.connect(("127.0.0.1", cfg.tcp_port))
+    # Negotiation (no auth)
+    client_tcp.sendall(b"\x05\x01\x00")
+    resp = client_tcp.recv(2)
+    assert resp == b"\x05\x00"
+    # Request UDP ASSOCIATE (IPv4 0.0.0.0:0)
+    request = b"\x05\x03\x00\x01" + socket.inet_aton("0.0.0.0") + struct.pack("!H", 0)
+    client_tcp.sendall(request)
+    reply = client_tcp.recv(10)
+    ver, rep, rsv, atyp = reply[0], reply[1], reply[2], reply[3]
+    assert ver == 5 and rep == 0
+    if atyp == 0x01:
+        bnd_addr = socket.inet_ntoa(reply[4:8])
+        bnd_port = struct.unpack("!H", reply[8:10])[0]
+    else:
+        pytest.skip("Unexpected ATYP in UDP ASSOCIATE reply")
+    assert bnd_port == cfg.udp_port
+    # UDP communication: send ping, expect pong
+    client_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    client_udp.bind(("127.0.0.1", 0))
+    dest_ip = "1.1.1.1"
+    dest_port = 4321
+    payload = b"ping"
+    packet = (
+        b"\x00\x00\x00\x01"
+        + socket.inet_aton(dest_ip)
+        + struct.pack("!H", dest_port)
+        + payload
+    )
+    client_udp.sendto(packet, ("127.0.0.1", cfg.udp_port))
+    # Wait for packet to be written to DummyTun
+    start_time = time.time()
+    while not tun._outgoing_data:
+        if time.time() - start_time > 1:
+            pytest.fail("Timed out waiting for outgoing packet in DummyTun")
+        time.sleep(0.01)
+    out_packet = tun._outgoing_data.popleft()
+    # Verify IP header and UDP header of outgoing packet
+    src_ip = socket.inet_ntoa(out_packet[12:16])
+    dst_ip = socket.inet_ntoa(out_packet[16:20])
+    src_port = int.from_bytes(out_packet[20:22], "big")
+    dst_port = int.from_bytes(out_packet[22:24], "big")
+    assert src_ip == "127.0.0.1" and dst_ip == dest_ip
+    assert dst_port == dest_port and src_port == client_udp.getsockname()[1]
+    assert out_packet[28:] == payload
+    # Simulate a UDP reply from remote (pong)
+    client_port = client_udp.getsockname()[1]
+    src_ip_reply = dest_ip
+    dst_ip_reply = "127.0.0.1"
+    src_port_reply = dest_port
+    dst_port_reply = client_port
+    payload_reply = b"pong"
+    total_length = 20 + 8 + len(payload_reply)
+    # Build IPv4 header with zero checksum first
+    ip_header = struct.pack(
+        "!BBHHHBBH4s4s",
+        0x45,
+        0,
+        total_length,
+        0,
+        0,
+        64,
+        socket.IPPROTO_UDP,
+        0,
+        socket.inet_aton(src_ip_reply),
+        socket.inet_aton(dst_ip_reply),
+    )
+    # Compute checksum
+    udp_handler = UDPHandler(cfg, tun)
+    checksum = udp_handler._ip_checksum(ip_header)
+    # Construct final IP header with checksum
+    ip_header = struct.pack(
+        "!BBHHHBBH4s4s",
+        0x45,
+        0,
+        total_length,
+        0,
+        0,
+        64,
+        socket.IPPROTO_UDP,
+        checksum,
+        socket.inet_aton(src_ip_reply),
+        socket.inet_aton(dst_ip_reply),
+    )
+    udp_header = struct.pack(
+        "!HHHH", src_port_reply, dst_port_reply, 8 + len(payload_reply), 0
+    )
+    response_packet = ip_header + udp_header + payload_reply
+    tun.inject(response_packet)
+    client_udp.settimeout(1)
+    resp_data, resp_addr = client_udp.recvfrom(65535)
+    # Verify received UDP response has pong payload
+    assert resp_addr[0] == "127.0.0.1"
+    # SOCKS5 UDP response header: 0x00 0x00 0x00 0x01 + src IP + src port
+    assert resp_data[:4] == b"\x00\x00\x00\x01"
+    recv_ip = socket.inet_ntoa(resp_data[4:8])
+    recv_port = struct.unpack("!H", resp_data[8:10])[0]
+    assert recv_ip == src_ip_reply and recv_port == src_port_reply
+    assert resp_data[10:] == payload_reply
+    # Clean up
+    client_udp.close()
+    client_tcp.close()
+    tun.close()
+
+
+def test_tcp_tunnel_echo():
+    # Start a simple echo server
+    class EchoServer(threading.Thread):
+        def __init__(self):
+            super().__init__(daemon=True)
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.bind(("127.0.0.1", 0))
+            self.sock.listen()
+            self.port = self.sock.getsockname()[1]
+
+        def run(self):
+            conn, addr = self.sock.accept()
+            data = conn.recv(1024)
+            if data:
+                conn.sendall(data)
+            conn.close()
+            self.sock.close()
+
+    echo_server = EchoServer()
+    echo_server.start()
+    # Configure and start Socks5 server
+    cfg = Config(
+        {
+            "tcp_host": "127.0.0.1",
+            "tcp_port": 1081,
+            "udp_host": "127.0.0.1",
+            "udp_port": 1081,
+            "tun_mode": "dummy",
+        }
+    )
+    tun = DummyTun()
+    tun.open()
+    server = SocksServer(cfg, tun=tun)
+    udp_thread = threading.Thread(target=start_udp_loop, args=(cfg, tun), daemon=True)
+    server_thread = threading.Thread(target=server.start, daemon=True)
+    udp_thread.start()
+    server_thread.start()
+    time.sleep(0.1)
+    # SOCKS5 handshake and TCP connect
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("127.0.0.1", cfg.tcp_port))
+    client.sendall(b"\x05\x01\x00")
+    resp = client.recv(2)
+    assert resp == b"\x05\x00"
+    dest_ip = "127.0.0.1"
+    dest_port = echo_server.port
+    request = (
+        b"\x05\x01\x00\x01" + socket.inet_aton(dest_ip) + struct.pack("!H", dest_port)
+    )
+    client.sendall(request)
+    reply = client.recv(10)
+    ver, rep = reply[0], reply[1]
+    assert ver == 5 and rep == 0
+    # Send data and verify echo
+    message = b"Hello, world"
+    client.sendall(message)
+    echoed = client.recv(len(message))
+    assert echoed == message
+    client.close()
+    echo_server.join(timeout=1)
+    tun.close()
+
+# --- tests/test_linux_tun.py ---
+import os
+import fcntl
+import struct
+import sys
+import select
+import pytest
+
+
+def is_working_tun():
+    """
+    Проверяет, можно ли открыть и использовать /dev/net/tun.
+    Возвращает True только если ioctl проходит успешно.
+    """
+    try:
+        tun_fd = os.open("/dev/net/tun", os.O_RDWR)
+        TUNSETIFF = 0x400454CA
+        IFF_TUN = 0x0001
+        IFF_NO_PI = 0x1000
+        fcntl.ioctl(
+            tun_fd, TUNSETIFF, struct.pack("16sH", b"skipcheck%d", IFF_TUN | IFF_NO_PI)
+        )
+        try:
+            os.write(tun_fd, b"")
+        except OSError:
+            os.close(tun_fd)
+            return False
+        os.close(tun_fd)
+        return True
+    except OSError:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith("linux")
+    or os.getuid() != 0
+    or not os.path.exists("/dev/net/tun"),
+    # or not is_working_tun(),
+    reason="Requires working /dev/net/tun and root access",
+)
+
+
+def test_linux_tun_open_read_write():
+    tun_fd = os.open("/dev/net/tun", os.O_RDWR)
+    TUNSETIFF = 0x400454CA
+    IFF_TUN = 0x0001
+    IFF_NO_PI = 0x1000
+    ifs = fcntl.ioctl(
+        tun_fd, TUNSETIFF, struct.pack("16sH", b"testtun%d", IFF_TUN | IFF_NO_PI)
+    )
+    tun_name = ifs[:16].strip(b"\x00").decode("utf-8")
+    assert tun_name.startswith("testtun")
+
+    # Define LinuxTun class for testing
+    class LinuxTun:
+        def __init__(self, fd):
+            self.fd = fd
+
+        def read(self, size=1500):
+            return os.read(self.fd, size)
+
+        def write(self, data):
+            return os.write(self.fd, data)
+
+        def close(self):
+            os.close(self.fd)
+
+    tun = LinuxTun(tun_fd)
+    data = b"\x00\x01\x02\x03"
+    written = tun.write(data)
+    assert written == len(data)
+    # Attempt to read (non-blocking)
+    rlist, _, _ = select.select([tun_fd], [], [], 0.1)
+    if rlist:
+        recv_data = tun.read(1500)
+        # Depending on environment, recv_data could be empty or contain data
+        assert recv_data == b"" or recv_data == data
+    tun.close()
+
+# --- tests/test_logger.py ---
+import logging
+from socks5tun.logger import setup_logging
+
+
+def test_setup_logging(monkeypatch):
+    recorded = {}
+
+    def fake_basicConfig(**kwargs):
+        recorded.update(kwargs)
+
+    dummy_urllib3_logger = type(
+        "DummyLogger",
+        (),
+        {"level": None, "setLevel": lambda self, lvl: setattr(self, "level", lvl)},
+    )()
+    original_getLogger = logging.getLogger
+
+    def fake_getLogger(name=None):
+        if name == "urllib3":
+            return dummy_urllib3_logger
+        return original_getLogger(name)
+
+    monkeypatch.setattr(logging, "basicConfig", fake_basicConfig)
+    monkeypatch.setattr(logging, "getLogger", fake_getLogger)
+
+    # Test with recognized level
+    setup_logging("DeBuG")
+    assert recorded.get("level") == logging.DEBUG
+    assert "%(threadName)s" in recorded.get("format", "")
+    # urllib3 logger should be set to WARNING
+    assert dummy_urllib3_logger.level == logging.WARNING
+
+    # Test with unrecognized level (defaults to INFO)
+    recorded.clear()
+    dummy_urllib3_logger.level = None
+    setup_logging("UNKNOWN_LEVEL")
+    assert recorded.get("level") == logging.INFO
+    assert dummy_urllib3_logger.level == logging.WARNING
+
+# --- tests/test_run.py ---
+import sys
+import json
+import subprocess
+import importlib
+import logging
+import pytest
+
+
+def test_missing_config_subprocess():
+    result = subprocess.run(
+        [sys.executable, "-m", "socks5tun.run", "-c", "nonexistent.json"],
+        capture_output=True,
+    )
+    assert result.returncode != 0
+    stderr = result.stderr.decode()
+    assert "Configuration file not found" in stderr
+
+
+def test_invalid_config_subprocess(tmp_path):
+    config_file = tmp_path / "config_dev.json"
+    config_file.write_text("{ invalid json }")
+    result = subprocess.run(
+        [sys.executable, "-m", "socks5tun.run", "-c", str(config_file)],
+        capture_output=True,
+    )
+    assert result.returncode != 0
+    stderr = result.stderr.decode()
+    assert "Error in configuration" in stderr
+
+
+def test_run_main_dummy(monkeypatch, tmp_path, caplog):
+    # Prepare a temporary config file for dummy TUN mode
+    cfg = {
+        "tcp_host": "127.0.0.1",
+        "tcp_port": 0,
+        "udp_host": "127.0.0.1",
+        "udp_port": 0,
+        "tun_mode": "dummy",
+        "log_level": "INFO",
+    }
+    config_path = tmp_path / "config_dev.json"
+    config_path.write_text(json.dumps(cfg))
+    # Simulate command-line arguments
+    monkeypatch.setattr(sys, "argv", ["socks5tun.run", "-c", str(config_path)])
+    # Monkeypatch DummyTun and SocksServer.start
+    DummyTun_called = {"open": False, "close": False}
+
+    class DummyTunStub:
+        def open(self):
+            DummyTun_called["open"] = True
+
+        def close(self):
+            DummyTun_called["close"] = True
+
+    import socks5tun.dummy_tun as dummy_tun
+
+    monkeypatch.setattr(dummy_tun, "DummyTun", DummyTunStub)
+    import socks5tun.udp_handler as udp_handler
+
+    monkeypatch.setattr(udp_handler, "start_udp_loop", lambda cfg, tun: None)
+    import socks5tun.server as server
+
+    def fake_start(self):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(server.SocksServer, "start", fake_start)
+    caplog.set_level(logging.INFO)
+    # Import and run main
+    from socks5tun.run import main
+
+    main()
+    # Verify that the server was interrupted and tun opened/closed
+    assert any("Server interrupted by user" in rec.message for rec in caplog.records)
+    assert DummyTun_called["open"] is True
+    assert DummyTun_called["close"] is True
+
+# --- tests/test_server.py ---
+import socket
+import struct
+import logging
+import ipaddress
+import pytest
+from socks5tun.config import Config
+from socks5tun.server import SocksServer
+
+
+class DummySocket:
+    def __init__(self, responses):
+        self._responses = list(responses)
+        self.sent_data = b""
+        self.closed = False
+
+    def recv(self, bufsize):
+        if not self._responses:
+            return b""
+        data = self._responses.pop(0)
+        if len(data) > bufsize:
+            part = data[:bufsize]
+            remaining = data[bufsize:]
+            self._responses.insert(0, remaining)
+            return part
+        return data
+
+    def sendall(self, data):
+        self.sent_data += data
+
+    def close(self):
+        self.closed = True
+
+
+def test_is_client_allowed():
+    cfg = Config({"allowed_clients": ["10.0.0.0/8"]})
+    server = SocksServer(cfg)
+    assert server._is_client_allowed("10.1.2.3") is True
+    assert server._is_client_allowed("192.168.1.100") is False
+
+
+def test_is_dest_allowed_rules():
+    cfg = Config({})
+    server = SocksServer(cfg)
+    # No rules: any valid IP should be allowed
+    assert server._is_dest_allowed("1.2.3.4", 80) is True
+    # Invalid IP string
+    assert server._is_dest_allowed("not_an_ip", 8080) is False
+
+    # Deny rule present
+    cfg2 = Config({})
+    cfg2.deny_rules = [(ipaddress.ip_network("192.168.0.0/16"), None)]
+    server2 = SocksServer(cfg2)
+    assert server2._is_dest_allowed("192.168.1.1", 8080) is False
+    assert server2._is_dest_allowed("8.8.8.8", 53) is True
+
+    # Allow rules present
+    cfg3 = Config({})
+    cfg3.allow_rules = [(ipaddress.ip_network("10.0.0.0/8"), None)]
+    server3 = SocksServer(cfg3)
+    assert server3._is_dest_allowed("10.5.5.5", 1234) is True
+    assert server3._is_dest_allowed("8.8.8.8", 53) is False
+
+    # Deny and allow conflict (deny takes precedence)
+    cfg4 = Config({})
+    net = ipaddress.ip_network("10.0.0.0/8")
+    cfg4.deny_rules = [(net, None)]
+    cfg4.allow_rules = [(net, None)]
+    server4 = SocksServer(cfg4)
+    assert server4._is_dest_allowed("10.9.0.1", 8080) is False
+
+
+def test_read_dest_address_ipv4():
+    server = SocksServer(Config({}))
+    ip = "203.0.113.5"
+    port = 3000
+    addr_bytes = socket.inet_aton(ip)
+    port_bytes = struct.pack("!H", port)
+    dummy = DummySocket([addr_bytes, port_bytes])
+    result = server._read_dest_address(dummy, 0x01)
+    assert result == (ip, port)
+
+
+def test_read_dest_address_ipv4_incomplete():
+    server = SocksServer(Config({}))
+    # Incomplete IPv4 address
+    dummy1 = DummySocket([b"\x01\x02"])
+    with pytest.raises(IOError) as excinfo:
+        server._read_dest_address(dummy1, 0x01)
+    assert "Incomplete IPv4 address" in str(excinfo.value)
+    # Incomplete port
+    addr_bytes = socket.inet_aton("10.0.0.1")
+    dummy2 = DummySocket([addr_bytes, b"\x99"])
+    with pytest.raises(IOError) as excinfo:
+        server._read_dest_address(dummy2, 0x01)
+    assert "Incomplete port" in str(excinfo.value)
+
+
+def test_read_dest_address_domain(monkeypatch):
+    server = SocksServer(Config({}))
+    # Monkey-patch DNS resolution
+    monkeypatch.setattr(
+        socket,
+        "gethostbyname",
+        lambda name: "203.0.113.10" if name == "example.com" else socket.gaierror(),
+    )
+    domain = "example.com"
+    port = 8080
+    length_byte = bytes([len(domain)])
+    dummy = DummySocket([length_byte, domain.encode("utf-8"), struct.pack("!H", port)])
+    result = server._read_dest_address(dummy, 0x03)
+    assert result == ("203.0.113.10", port)
+
+
+def test_read_dest_address_domain_incomplete(monkeypatch):
+    server = SocksServer(Config({}))
+    # Incomplete domain length
+    dummy1 = DummySocket([])
+    with pytest.raises(IOError) as excinfo:
+        server._read_dest_address(dummy1, 0x03)
+    assert "Incomplete domain length" in str(excinfo.value)
+    # Incomplete domain name
+    length = 5
+    dummy2 = DummySocket([bytes([length]), b"abc"])
+    with pytest.raises(IOError) as excinfo:
+        server._read_dest_address(dummy2, 0x03)
+    assert "Incomplete domain name" in str(excinfo.value)
+    # Incomplete port
+    dummy3 = DummySocket([bytes([3]), b"abc", b"\x01"])
+    with pytest.raises(IOError) as excinfo:
+        server._read_dest_address(dummy3, 0x03)
+    assert "Incomplete port" in str(excinfo.value)
+    # DNS resolution failure logs warning and raises
+    monkeypatch.setattr(
+        socket,
+        "gethostbyname",
+        lambda name: (_ for _ in ()).throw(Exception("resolve_fail")),
+    )
+    dummy4 = DummySocket([bytes([3]), b"bad", struct.pack("!H", 80)])
+    caplog = logging.getLogger("socks5-server")
+    with pytest.raises(Exception):
+        server._read_dest_address(dummy4, 0x03)
+
+
+def test_read_dest_address_ipv6():
+    server = SocksServer(Config({}))
+    ip = "2001:db8::1"
+    port = 9090
+    addr_bytes = socket.inet_pton(socket.AF_INET6, ip)
+    port_bytes = struct.pack("!H", port)
+    dummy = DummySocket([addr_bytes, port_bytes])
+    result = server._read_dest_address(dummy, 0x04)
+    assert result == (ip, port)
+
+
+def test_read_dest_address_ipv6_incomplete():
+    server = SocksServer(Config({}))
+    dummy1 = DummySocket([b"\x00" * 15])
+    with pytest.raises(IOError) as excinfo:
+        server._read_dest_address(dummy1, 0x04)
+    assert "Incomplete IPv6 address" in str(excinfo.value)
+    addr_bytes = socket.inet_pton(socket.AF_INET6, "2001:db8::2")
+    dummy2 = DummySocket([addr_bytes, b"\x00"])
+    with pytest.raises(IOError) as excinfo:
+        server._read_dest_address(dummy2, 0x04)
+    assert "Incomplete port" in str(excinfo.value)
+
+
+def test_read_dest_address_unsupported_type():
+    server = SocksServer(Config({}))
+    dummy = DummySocket([])
+    with pytest.raises(ValueError) as excinfo:
+        server._read_dest_address(dummy, 0x09)
+    assert "Unsupported address type" in str(excinfo.value)
+
+
+def test_handshake_no_auth_accept():
+    cfg = Config({"auth": None})
+    server = SocksServer(cfg)
+    dummy = DummySocket([b"\x05\x01", b"\x00"])
+    server._handle_client(dummy, ("1.2.3.4", 5000))
+    # Server should select NO_AUTH and not close immediately (will close when no request follows)
+    assert dummy.sent_data.startswith(b"\x05\x00")
+    assert dummy.closed is True
+
+
+def test_handshake_no_auth_reject():
+    cfg = Config({"auth": None})
+    server = SocksServer(cfg)
+    dummy = DummySocket([b"\x05\x01", b"\x02"])
+    server._handle_client(dummy, ("1.2.3.4", 5001))
+    # Server should respond with NO_ACCEPTABLE and close
+    assert dummy.sent_data == b"\x05\xff"
+    assert dummy.closed is True
+
+
+def test_handshake_auth_success():
+    cfg = Config({"auth": {"username": "user", "password": "pass"}})
+    server = SocksServer(cfg)
+    dummy = DummySocket(
+        [
+            b"\x05\x01",
+            b"\x02",  # SOCKS5 greeting with USER_AUTH method
+            b"\x01",  # Auth version 1
+            b"\x04",  # Username length 4
+            b"user",  # Username
+            b"\x04",  # Password length 4
+            b"pass",  # Password
+        ]
+    )
+    server._handle_client(dummy, ("1.2.3.4", 5002))
+    # Should select USER_AUTH and then auth success
+    assert dummy.sent_data == b"\x05\x02\x01\x00"
+    assert dummy.closed is True
+
+
+def test_handshake_auth_failure(caplog):
+    cfg = Config({"auth": {"username": "user", "password": "pass"}})
+    server = SocksServer(cfg)
+    dummy = DummySocket(
+        [
+            b"\x05\x01",
+            b"\x02",  # greeting
+            b"\x01",  # auth version
+            b"\x04",  # username length
+            b"user",  # username
+            b"\x04",  # password length
+            b"fail",  # wrong password
+        ]
+    )
+    caplog.set_level(logging.WARNING)
+    server._handle_client(dummy, ("1.2.3.4", 5003))
+    # Should respond with auth failure and close
+    assert dummy.sent_data == b"\x05\x02\x01\x01"
+    assert dummy.closed is True
+    # Warning log for auth failure
+    warnings = [rec for rec in caplog.records if rec.levelno == logging.WARNING]
+    assert any("Authentication failed for 1.2.3.4" in rec.message for rec in warnings)
+
+
+def test_handshake_auth_no_method():
+    cfg = Config({"auth": {"username": "u", "password": "p"}})
+    server = SocksServer(cfg)
+    dummy = DummySocket([b"\x05\x01", b"\x00"])
+    server._handle_client(dummy, ("1.2.3.4", 5004))
+    # Server should reject because client didn't offer USER_AUTH
+    assert dummy.sent_data == b"\x05\xff"
+    assert dummy.closed is True
+
+# --- tests/test_socks.py ---
+import socket
+import struct
+import logging
+import pytest
+from socks5tun.udp_handler import UDPHandler
+
+
+class DummyTun:
+    """Dummy TUN device for testing: collects written packets."""
+
+    def __init__(self):
+        self.packets = []
+
+    def write(self, data: bytes):
+        # Simply store the packet data written to TUN
+        self.packets.append(data)
+
+
+class DummyConfig:
+    def __init__(self):
+        # Use system DNS resolver by default
+        self.dns_resolver = "system"
+        # Define forbidden networks to simulate
+        # blocking (default: block private IP ranges)
+        self.forbidden_networks = [
+            "127.0.0.0/8",
+            "10.0.0.0/8",
+            "192.168.0.0/16",
+            "172.16.0.0/12",
+        ]
+
+
+@pytest.fixture
+def udp_handler():
+    cfg = DummyConfig()
+    tun = DummyTun()
+    handler = UDPHandler(cfg, tun)
+    return handler, tun
+
+
+def test_udp_allow_logging(udp_handler, caplog):
+    handler, tun = udp_handler
+    # Prepare a UDP packet to a public IP (should be allowed)
+    dest_ip = "8.8.8.8"
+    dest_port = 53
+    payload = b"hello"
+    # Build SOCKS5 UDP request: 0x00 0x00
+    # (reserved), 0x00 (FRAG), 0x01 (ATYP=IPv4),
+    # then dest IPv4 (4 bytes), dest port (2 bytes), then payload
+    packet = (
+        b"\x00\x00\x00\x01"
+        + socket.inet_aton(dest_ip)
+        + struct.pack("!H", dest_port)
+        + payload
+    )
+    client_addr = ("192.0.2.10", 39522)
+    # Capture logs at INFO level
+    caplog.set_level(logging.INFO)
+    handler.handle_client_packet(packet, client_addr)
+    # Verify that an INFO log was generated for allowed UDP packet
+    records = [
+        rec
+        for rec in caplog.records
+        if rec.levelno == logging.INFO and "[UDP-ALLOW]" in rec.message
+    ]
+    assert len(records) == 1
+    log_msg = records[0].message
+    # Log message should contain source, destination and length
+    assert log_msg.startswith("[UDP-ALLOW] ")
+    assert "192.0.2.10:39522" in log_msg
+    assert "8.8.8.8:53" in log_msg
+    assert f"len={len(payload)}" in log_msg
+    # Verify that the packet was written to TUN
+    assert len(tun.packets) == 1
+    packet_out = tun.packets[0]
+    # The output packet should have correct IP and UDP headers (IPv4)
+    # Check IP header source and destination
+    src_ip_bytes = packet_out[12:16]
+    dst_ip_bytes = packet_out[16:20]
+    assert src_ip_bytes == socket.inet_aton(client_addr[0])
+    assert dst_ip_bytes == socket.inet_aton(dest_ip)
+    # Check UDP header (immediately after 20-byte IP header)
+    udp_header = packet_out[20:28]
+    src_port, dst_port, udp_len, udp_checksum = struct.unpack(
+        "!HHHH",
+        udp_header,
+    )
+    assert src_port == client_addr[1]
+    assert dst_port == dest_port
+    # Payload in output should match input payload
+    output_payload = packet_out[28:]
+    assert output_payload == payload
+
+
+def test_udp_deny_logging(udp_handler, caplog):
+    handler, tun = udp_handler
+    # Prepare a UDP packet to a forbidden IP (should be denied)
+    dest_ip = "192.168.0.1"
+    dest_port = 80
+    payload = b"data"
+    packet = (
+        b"\x00\x00\x00\x01"
+        + socket.inet_aton(dest_ip)
+        + struct.pack("!H", dest_port)
+        + payload
+    )
+    client_addr = ("10.0.0.5", 60234)
+    caplog.set_level(logging.WARNING)
+    handler.handle_client_packet(packet, client_addr)
+    # Verify that a WARNING log was generated for denied UDP packet
+    records = [
+        rec
+        for rec in caplog.records
+        if rec.levelno == logging.WARNING and "[UDP-DENY" in rec.message
+    ]
+    assert len(records) == 1
+    log_msg = records[0].message
+    # Log message should indicate the source, destination and deny reason
+    assert log_msg.startswith("[UDP-DENY ] ")
+    assert "10.0.0.5:60234" in log_msg
+    assert "192.168.0.1:80" in log_msg
+    assert "reason=deny_rule" in log_msg
+    # Ensure that no packet was written to TUN for the denied packet
+    # (TUN still has only any packets
+    # from previous allowed tests, but no new one added here)
+    assert len(tun.packets) == 0  # unchanged from previous state (no new packets)
+
+
+def test_udp_domain_name_resolution(monkeypatch, udp_handler, caplog):
+    handler, tun = udp_handler
+    # Monkey-patch socket.getaddrinfo to simulate DNS resolution for a domain
+    resolved_ip = "93.184.216.34"  # example.com
+
+    def fake_getaddrinfo(name, port, *args, **kwargs):
+        # Should be called with the domain name
+        assert name == "example.com"
+        return [
+            (
+                socket.AF_INET,
+                socket.SOCK_DGRAM,
+                socket.IPPROTO_UDP,
+                "",
+                (resolved_ip, port),
+            )
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
+    # Build a UDP packet with a domain name address (ATYP=3)
+    domain = "example.com"
+    dest_port = 80
+    payload = b"test"
+    # SOCKS5 UDP header: reserved,
+    # frag=0, ATYP=3, length byte, domain bytes, port, then payload
+    packet = (
+        b"\x00\x00\x00\x03"
+        + bytes([len(domain)])
+        + domain.encode('ascii')
+        + struct.pack("!H", dest_port)
+        + payload
+    )
+    client_addr = ("192.0.2.10", 40000)
+    caplog.set_level(logging.INFO)
+    handler.handle_client_packet(packet, client_addr)
+    # After handling, there should be an
+    # INFO log for the allowed UDP (resolved domain)
+    records = [
+        rec
+        for rec in caplog.records
+        if rec.levelno == logging.INFO and "[UDP-ALLOW]" in rec.message
+    ]
+    assert len(records) == 1
+    log_msg = records[0].message
+    # The log should contain the resolved IP and port
+    assert "192.0.2.10:40000" in log_msg
+    assert f"{resolved_ip}:80" in log_msg
+    assert f"len={len(payload)}" in log_msg
+    # Verify that a packet was written to TUN with the resolved destination IP
+    assert len(tun.packets) == 1
+    packet_out = tun.packets[0]
+    dst_ip_bytes = packet_out[16:20]
+    assert dst_ip_bytes == socket.inet_aton(resolved_ip)
+
+# --- tests/test_udp_handler.py ---
+import socket
+import struct
+import logging
+import pytest
+from socks5tun.udp_handler import UDPHandler
+
+
+class DummyTun:
+    def __init__(self):
+        self.packets = []
+
+    def write(self, data: bytes):
+        self.packets.append(data)
+        return len(data)
+
+
+class DummyConfig:
+    def __init__(self):
+        self.dns_resolver = "system"
+        # Simulate forbidden networks (common private ranges)
+        self.forbidden_networks = [
+            "127.0.0.0/8",
+            "10.0.0.0/8",
+            "192.168.0.0/16",
+            "172.16.0.0/12",
+        ]
+        self.deny_rules = []
+        self.allow_rules = []
+
+
+@pytest.fixture
+def udp_handler():
+    cfg = DummyConfig()
+    tun = DummyTun()
+    handler = UDPHandler(cfg, tun)
+    return handler, tun
+
+
+def test_udp_allow_logging(udp_handler, caplog):
+    handler, tun = udp_handler
+    dest_ip = "8.8.8.8"
+    dest_port = 53
+    payload = b"hello"
+    packet = (
+        b"\x00\x00\x00\x01"
+        + socket.inet_aton(dest_ip)
+        + struct.pack("!H", dest_port)
+        + payload
+    )
+    client_addr = ("192.0.2.10", 40000)
+    caplog.set_level(logging.INFO)
+    handler.handle_client_packet(packet, client_addr)
+    # Should log an INFO [UDP-ALLOW] message
+    records = [
+        rec
+        for rec in caplog.records
+        if rec.levelno == logging.INFO and "[UDP-ALLOW]" in rec.message
+    ]
+    assert len(records) == 1
+    msg = records[0].message
+    assert (
+        "192.0.2.10:40000" in msg
+        and "8.8.8.8:53" in msg
+        and f"len={len(payload)}" in msg
+    )
+    # Packet should be written to tun
+    assert len(tun.packets) == 1
+    out_packet = tun.packets[0]
+    # Check IP and UDP header fields of output packet
+    src_ip_bytes = out_packet[12:16]
+    dst_ip_bytes = out_packet[16:20]
+    assert src_ip_bytes == socket.inet_aton(client_addr[0])
+    assert dst_ip_bytes == socket.inet_aton(dest_ip)
+    udp_header = out_packet[20:28]
+    src_port, dst_port, udp_len, udp_checksum = struct.unpack("!HHHH", udp_header)
+    assert src_port == client_addr[1] and dst_port == dest_port
+    assert out_packet[28:] == payload
+
+
+def test_udp_deny_logging(udp_handler, caplog):
+    handler, tun = udp_handler
+    dest_ip = "192.168.0.1"  # falls within forbidden networks
+    dest_port = 80
+    payload = b"data"
+    packet = (
+        b"\x00\x00\x00\x01"
+        + socket.inet_aton(dest_ip)
+        + struct.pack("!H", dest_port)
+        + payload
+    )
+    client_addr = ("10.0.0.5", 50000)
+    caplog.set_level(logging.WARNING)
+    handler.handle_client_packet(packet, client_addr)
+    # Should log a WARNING [UDP-DENY] message
+    records = [
+        rec
+        for rec in caplog.records
+        if rec.levelno == logging.WARNING and "[UDP-DENY" in rec.message
+    ]
+    assert len(records) == 1
+    msg = records[0].message
+    assert "10.0.0.5:50000" in msg and "192.168.0.1:80" in msg
+    assert "reason=deny_rule" in msg
+    # No packet written to tun
+    assert len(tun.packets) == 0
+
+
+def test_udp_domain_name_resolution(monkeypatch, udp_handler, caplog):
+    handler, tun = udp_handler
+    resolved_ip = "93.184.216.34"  # example.com resolved result
+
+    def fake_getaddrinfo(name, port, *args, **kwargs):
+        assert name == "example.com"
+        return [
+            (
+                socket.AF_INET,
+                socket.SOCK_DGRAM,
+                socket.IPPROTO_UDP,
+                "",
+                (resolved_ip, port),
+            )
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
+    domain = "example.com"
+    dest_port = 80
+    payload = b"test"
+    packet = (
+        b"\x00\x00\x00\x03"
+        + bytes([len(domain)])
+        + domain.encode()
+        + struct.pack("!H", dest_port)
+        + payload
+    )
+    client_addr = ("192.0.2.99", 12345)
+    caplog.set_level(logging.INFO)
+    handler.handle_client_packet(packet, client_addr)
+    # Should log an INFO [UDP-ALLOW] message for resolved domain
+    records = [
+        rec
+        for rec in caplog.records
+        if rec.levelno == logging.INFO and "[UDP-ALLOW]" in rec.message
+    ]
+    assert len(records) == 1
+    msg = records[0].message
+    assert (
+        "192.0.2.99:12345" in msg
+        and f"{resolved_ip}:80" in msg
+        and f"len={len(payload)}" in msg
+    )
+    # Packet written to tun should use the resolved IP
+    assert len(tun.packets) == 1
+    out_packet = tun.packets[0]
+    dst_ip_bytes = out_packet[16:20]
+    assert dst_ip_bytes == socket.inet_aton(resolved_ip)
+
+
+def test_udp_fragmented_packet(udp_handler, caplog):
+    handler, tun = udp_handler
+    packet = (
+        b"\x00\x00\x01\x01"
+        + socket.inet_aton("8.8.8.8")
+        + struct.pack("!H", 53)
+        + b"data"
+    )
+    caplog.set_level(logging.WARNING)
+    handler.handle_client_packet(packet, ("192.0.2.10", 11111))
+    # Should log warning about fragmented packet
+    warnings = [rec for rec in caplog.records if rec.levelno == logging.WARNING]
+    assert any("fragmented UDP packet" in rec.message for rec in warnings)
+    assert tun.packets == []
+
+
+@pytest.mark.parametrize(
+    "packet",
+    [
+        b"\x00\x00\x00",  # too short (len < 4)
+        b"\x01\x00\x00\x01"
+        + socket.inet_aton("1.2.3.4")
+        + struct.pack("!H", 80),  # bad reserved byte
+        b"\x00\x01\x00\x01"
+        + socket.inet_aton("1.2.3.4")
+        + struct.pack("!H", 80),  # bad reserved byte
+        b"\x00\x00\x00\x05",  # unknown ATYP
+        b"\x00\x00\x00\x01\x7f\x00\x00",  # incomplete IPv4 address/port
+        b"\x00\x00\x00\x03\x03abc",  # incomplete domain (missing port)
+        b"\x00\x00\x00\x04" + b"12345678",  # incomplete IPv6 address
+    ],
+)
+def test_udp_invalid_packets_drop(udp_handler, packet):
+    handler, tun = udp_handler
+    handler.handle_client_packet(packet, ("192.0.2.10", 22222))
+    # No packet should be written to tun for any invalid input
+    assert tun.packets == []
+
+
+def test_udp_ipv6_not_supported(udp_handler, caplog):
+    handler, tun = udp_handler
+    dest_ip = "2001:db8::1"
+    dest_port = 53
+    packet = (
+        b"\x00\x00\x00\x04"
+        + socket.inet_pton(socket.AF_INET6, dest_ip)
+        + struct.pack("!H", dest_port)
+        + b"data"
+    )
+    caplog.set_level(logging.WARNING)
+    handler.handle_client_packet(packet, ("192.0.2.1", 33333))
+    warnings = [rec for rec in caplog.records if rec.levelno == logging.WARNING]
+    assert any("not supported" in rec.message for rec in warnings)
+    assert tun.packets == []
+
+
+def test_ip_checksum(udp_handler):
+    handler, _ = udp_handler
+    # Even-length data
+    assert handler._ip_checksum(b"\x00\x00") == 0xFFFF
+    assert handler._ip_checksum(b"\xff\xff") == 0x0000
+    # Odd-length data
+    assert handler._ip_checksum(b"\x00") == 0xFFFF
+    assert handler._ip_checksum(b"\xff") == 0x00FF
+
+# --- tests/test_udp_socks5.py ---
+import socket
+import struct
+import time
+
+
+def test_udp_associate_to_dns():
+    # === 1. Установим TCP-соединение с SOCKS5-прокси ===
+    proxy_addr = ("127.0.0.1", 1080)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(proxy_addr)
+
+    # === 2. Рукопожатие: версия 5, 1 метод, без авторизации ===
+    sock.sendall(b"\x05\x01\x00")
+    resp = sock.recv(2)
+    assert resp == b"\x05\x00", f"Unexpected handshake response: {resp!r}"
+
+    # === 3. Отправим команду UDP ASSOCIATE ===
+    # Формат: VER, CMD=3, RSV=0, ATYP=1, ADDR=0.0.0.0, PORT=0
+    udp_request = b"\x05\x03\x00\x01\x00\x00\x00\x00\x00\x00"
+    sock.sendall(udp_request)
+    resp = sock.recv(10)
+    assert resp[1] == 0x00, f"UDP ASSOCIATE failed: {resp!r}"
+
+    # Извлекаем адрес и порт, куда нужно отправлять UDP (скорее всего 127.0.0.1:1080)
+    bnd_addr = socket.inet_ntoa(resp[4:8])
+    bnd_port = struct.unpack("!H", resp[8:10])[0]
+
+    print(f"[UDP ASSOCIATE] → {bnd_addr}:{bnd_port}")
+
+    # === 4. Отправим UDP-пакет в формате SOCKS5 ===
+    udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_sock.bind(("127.0.0.1", 0))  # подставим src-порт
+
+    # SOCKS5 UDP header:
+    # RSV=0x00 0x00, FRAG=0x00, ATYP=IPv4 (0x01), DST.ADDR, DST.PORT
+    dns_server = "8.8.8.8"
+    dns_port = 53
+    dummy_payload = b"hello"
+    udp_header = (
+        b"\x00\x00\x00\x01" + socket.inet_aton(dns_server) + struct.pack("!H", dns_port)
+    )
+    packet = udp_header + dummy_payload
+
+    udp_sock.sendto(packet, (bnd_addr, bnd_port))
+    print(f"[UDP SENT] {dns_server}:{dns_port} ← 'hello'")
+
+    # === 5. Ждём 1 сек и завершаем соединения ===
+    time.sleep(1)
+    udp_sock.close()
+    sock.close()

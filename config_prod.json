@@ -1,0 +1,30 @@
+{
+  "tcp_host": "0.0.0.0",
+  "tcp_port": 5000,
+  "udp_host": "0.0.0.0",
+  "udp_port": 5000,
+  "tun_mode": "linux",
+  "log_level": "DEBUG",
+
+  "tun": {
+    "name": "tun0",
+    "address": "10.8.0.1",
+    "netmask": "255.255.255.0",
+    "peer_address": "10.8.0.2",
+    "mtu": 1500
+  },
+
+  "nat": {
+    "out_iface": "eth0"
+  },
+
+  "auth": null,
+  "allowed_clients": ["0.0.0.0/0"],
+  "blocked_destinations": [
+    "0.0.0.0/8", "10.0.0.0/8", "127.0.0.0/8",
+    "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16",
+    "240.0.0.0/4"
+  ],
+  "dns_resolver": "system",
+  "self_check": true
+}
