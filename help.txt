@@ -38,6 +38,9 @@ sudo nano /etc/stunnel/stunnel.conf
 # Запустить тесты
 pytest -q
 
+# Проверка покрытия тестами
+./scripts/coverage.sh
+
 # Вернутся в проект
 cd ~/socks5tun
 

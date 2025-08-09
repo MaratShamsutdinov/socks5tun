@@ -25,7 +25,7 @@ class UDPHandler:
     def _ip_checksum(self, data: bytes) -> int:
         """Calculate IPv4 header checksum."""
         if len(data) % 2 == 1:
-            data += b'\x00'
+            data += b"\x00"
         total = 0
         for i in range(0, len(data), 2):
             word = data[i] << 8 | data[i + 1]
@@ -33,6 +33,35 @@ class UDPHandler:
         total = (total >> 16) + (total & 0xFFFF)
         total = ~total & 0xFFFF
         return total
+
+    def _udp_checksum_v6(
+        self, src_ip: str, dst_ip: str, udp_header: bytes, payload: bytes
+    ) -> int:
+        """
+        RFC 2460/8200: UDP checksum over IPv6 pseudo-header + UDP header (csum=0) + payload.
+        """
+        src_bytes = socket.inet_pton(socket.AF_INET6, src_ip)
+        dst_bytes = socket.inet_pton(socket.AF_INET6, dst_ip)
+        udp_len = len(udp_header) + len(payload)
+        pseudo = (
+            src_bytes
+            + dst_bytes
+            + struct.pack("!I", udp_len)
+            + b"\x00\x00\x00"
+            + struct.pack("!B", socket.IPPROTO_UDP)
+        )
+        hdr = bytearray(udp_header)
+        hdr[6:8] = b"\x00\x00"
+        data = pseudo + bytes(hdr) + payload
+        if len(data) % 2:
+            data += b"\x00"
+        total = 0
+        for i in range(0, len(data), 2):
+            total += (data[i] << 8) | data[i + 1]
+        total = (total >> 16) + (total & 0xFFFF)
+        total = (total >> 16) + (total & 0xFFFF)
+        csum = (~total) & 0xFFFF
+        return 0xFFFF if csum == 0 else csum
 
     def handle_client_packet(self, data: bytes, client_addr):
         """
@@ -52,10 +81,12 @@ class UDPHandler:
                 f"Received fragmented UDP packet from {client_addr}, dropping"
             )
             return
+
         atyp = data[3]
         offset = 4
         dest_addr = None
         dest_port = None
+
         # Parse destination based on ATYP
         if atyp == 0x01:  # IPv4
             if len(data) < offset + 6:
@@ -64,6 +95,7 @@ class UDPHandler:
             offset += 4
             dest_port = struct.unpack("!H", data[offset : offset + 2])[0]
             offset += 2
+
         elif atyp == 0x03:  # Domain name
             if len(data) < offset + 1:
                 return
@@ -72,41 +104,28 @@ class UDPHandler:
             if len(data) < offset + name_len + 2:
                 return
             dest_name = data[offset : offset + name_len].decode(
-                'ascii', errors='ignore'
+                "ascii", errors="ignore"
             )
             offset += name_len
             dest_port = struct.unpack("!H", data[offset : offset + 2])[0]
             offset += 2
-            # Resolve domain to IP
-            if getattr(self.cfg, "dns_resolver", "system") == "system":
-                try:
-                    addrs = socket.getaddrinfo(
-                        dest_name, dest_port, proto=socket.IPPROTO_UDP
-                    )
-                except Exception:
-                    logger.warning(
-                        f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]}"
-                        f" → {dest_name}:{dest_port} reason=resolve_fail"
-                    )
-                    return
-            else:
-                try:
-                    addrs = socket.getaddrinfo(
-                        dest_name, dest_port, proto=socket.IPPROTO_UDP
-                    )
-                except Exception:
-                    logger.warning(
-                        f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]}"
-                        f" → {dest_name}:{dest_port} reason=resolve_fail"
-                    )
-                    return
+            # Resolve domain to IP (prefer entries suitable for UDP; v4/v6 allowed)
+            try:
+                addrs = socket.getaddrinfo(
+                    dest_name, dest_port, proto=socket.IPPROTO_UDP
+                )
+            except Exception:
+                logger.warning(
+                    f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]} → {dest_name}:{dest_port} reason=resolve_fail"
+                )
+                return
             if not addrs:
                 logger.warning(
-                    f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]}"
-                    f" → {dest_name}:{dest_port} reason=resolve_fail"
+                    f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]} → {dest_name}:{dest_port} reason=resolve_fail"
                 )
                 return
             dest_addr = addrs[0][4][0]
+
         elif atyp == 0x04:  # IPv6
             if len(data) < offset + 18:
                 return
@@ -121,9 +140,11 @@ class UDPHandler:
             offset += 2
         else:
             return
+
         payload = data[offset:]
         if dest_addr is None:
             return
+
         # Apply allow/deny filtering
         allowed = True
         reason = "deny_rule"
@@ -131,21 +152,20 @@ class UDPHandler:
             ip_obj = ip_address(dest_addr)
         except ValueError:
             ip_obj = None
+
         if ip_obj:
-            # Check deny rules
+            # Deny rules
             for net, port in getattr(self.cfg, "deny_rules", []):
                 if ip_obj in net and (port is None or dest_port == port):
                     allowed = False
                     break
-
-            # Check legacy forbidden networks if no explicit deny rules
+            # Legacy forbidden if no explicit deny
             if allowed and not getattr(self.cfg, "deny_rules", []):
                 for net in self.forbidden_networks:
                     if ip_obj in net:
                         allowed = False
                         break
-
-            # Check allow rules
+            # Allow rules gate
             if allowed and getattr(self.cfg, "allow_rules", []):
                 matched = False
                 for net, port in self.cfg.allow_rules:
@@ -156,18 +176,21 @@ class UDPHandler:
                     allowed = False
         else:
             allowed = False
+
         if not allowed:
             logger.warning(
-                f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]}"
-                f" → {dest_addr}:{dest_port} reason={reason}"
+                f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]} → {dest_addr}:{dest_port} reason={reason}"
             )
             return
-        # Build packet and forward to TUN (IPv4 only)
+
+        # Build packet and forward to TUN
         ip_obj = ip_address(dest_addr)
         if ip_obj.version == 4:
-            src_ip = client_addr[0]
+            # Source: prefer configured peer_address (inside tunnel), fallback to client socket addr
+            src_ip = self.cfg.tun.get("peer_address", client_addr[0])
             src_port = client_addr[1] & 0xFFFF
             dst_ip = dest_addr
+
             # IPv4 header
             version = 4
             ihl = 5
@@ -180,7 +203,6 @@ class UDPHandler:
             protocol = socket.IPPROTO_UDP
             src_ip_bytes = socket.inet_aton(src_ip)
             dst_ip_bytes = socket.inet_aton(dst_ip)
-            # Initial header with zero checksum
             ip_header = struct.pack(
                 "!BBHHHBBH4s4s",
                 ver_ihl,
@@ -195,7 +217,6 @@ class UDPHandler:
                 dst_ip_bytes,
             )
             checksum = self._ip_checksum(ip_header)
-            # Final IP header with checksum
             ip_header = struct.pack(
                 "!BBHHHBBH4s4s",
                 ver_ihl,
@@ -209,32 +230,68 @@ class UDPHandler:
                 src_ip_bytes,
                 dst_ip_bytes,
             )
-            # UDP header
+
+            # UDP header (IPv4 UDP checksum may be zero; many stacks allow this)
             dst_port_net = dest_port & 0xFFFF
             udp_length = 8 + len(payload)
-            udp_header = struct.pack(
-                "!HHHH",
-                src_port,
-                dst_port_net,
-                udp_length,
-                0,
-            )
+            udp_header = struct.pack("!HHHH", src_port, dst_port_net, udp_length, 0)
+
             packet = ip_header + udp_header + payload
-            self.tun.write(packet)
+            try:
+                self.tun.write(packet)
+            except Exception as e:
+                logger.error("Failed to write IPv4 packet to TUN: %s", e)
+                return
             self.remote_map[(dest_addr, dest_port)] = client_addr
+
         elif ip_obj.version == 6:
-            logger.warning(
-                f"Cannot forward UDP to IPv6 address"
-                f" {dest_addr} "
-                f"(not supported)"
+            # IPv6 build & send into TUN (UDP checksum REQUIRED)
+            src_ip = (
+                self.cfg.tun.get("peer_address6") or self.cfg.tun.get("peer_address_v6")
+            ) or client_addr[0]
+            try:
+                socket.inet_pton(socket.AF_INET6, src_ip)
+                socket.inet_pton(socket.AF_INET6, dest_addr)
+            except OSError:
+                logger.error("Invalid IPv6 src/dst: %s -> %s", src_ip, dest_addr)
+                return
+
+            version = 6
+            traffic_class = 0
+            flow_label = 0
+            udp_len = 8 + len(payload)
+            next_hdr = socket.IPPROTO_UDP
+            hop_limit = 64
+            ver_tc_fl = (version << 28) | (traffic_class << 20) | flow_label
+            ip6_header = struct.pack(
+                "!IHBB16s16s",
+                ver_tc_fl,
+                udp_len,
+                next_hdr,
+                hop_limit,
+                socket.inet_pton(socket.AF_INET6, src_ip),
+                socket.inet_pton(socket.AF_INET6, dest_addr),
             )
-            return
+            src_port = client_addr[1] & 0xFFFF
+            udp_header = struct.pack("!HHHH", src_port, dest_port & 0xFFFF, udp_len, 0)
+            csum = self._udp_checksum_v6(src_ip, dest_addr, udp_header, payload)
+            udp_header = struct.pack(
+                "!HHHH", src_port, dest_port & 0xFFFF, udp_len, csum
+            )
+
+            packet = ip6_header + udp_header + payload
+            try:
+                self.tun.write(packet)
+            except Exception as e:
+                logger.error("Failed to write IPv6 packet to TUN: %s", e)
+                return
+            self.remote_map[(dest_addr, dest_port)] = client_addr
+
         else:
             return
-        # Log forwarded packet as allowed
+
         logger.info(
-            f"[UDP-ALLOW] {client_addr[0]}:{client_addr[1]}"
-            f" → {dest_addr}:{dest_port} len={len(payload)}"
+            f"[UDP-ALLOW] {client_addr[0]}:{client_addr[1]} → {dest_addr}:{dest_port} len={len(payload)}"
         )
 
 
@@ -243,8 +300,31 @@ def start_udp_loop(cfg, tun):
     Start a loop to handle global UDP relay.
     Listens on cfg.udp_host:cfg.udp_port for UDP traffic.
     """
-    family = socket.AF_INET6 if ':' in cfg.udp_host else socket.AF_INET
+
+    def _normalize_ip_for_acl(addr: str) -> str:
+        # convert ::ffff:a.b.c.d → a.b.c.d for ACL checks
+        if addr.startswith("::ffff:"):
+            try:
+                v4 = addr.split("::ffff:")[-1]
+                socket.inet_pton(socket.AF_INET, v4)
+                return v4
+            except Exception:
+                return addr
+        return addr
+
+    family = (
+        socket.AF_INET6
+        if (cfg.udp_host == "::" or ":" in cfg.udp_host)
+        else socket.AF_INET
+    )
     udp_sock = socket.socket(family, socket.SOCK_DGRAM)
+    if family == socket.AF_INET6:
+        # Allow IPv4 on IPv6 socket (dual-stack)
+        try:
+            udp_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except OSError as e:
+            logger.warning("Could not set IPV6_V6ONLY=0: %s", e)
+
     logger.debug("[BOOT] Entered start_udp_loop()")
     try:
         udp_sock.bind((cfg.udp_host, cfg.udp_port))
@@ -257,17 +337,16 @@ def start_udp_loop(cfg, tun):
         )
         return
 
-    logger.info(
-        "[DEBUG] Bound UDP socket on %s:%d",
-        cfg.udp_host,
-        cfg.udp_port,
-    )
+    logger.info("[DEBUG] Bound UDP socket on %s:%d", cfg.udp_host, cfg.udp_port)
     logger.info(f"UDP relay socket listening on {cfg.udp_host}:{cfg.udp_port}")
+
     # Mapping for direct UDP mode (dest -> client)
     remote_map = {}
+
     # Handler for client packets
     handler = UDPHandler(cfg, tun)
     handler.remote_map = remote_map
+
     # If TUN interface is available, start thread to handle incoming packets from TUN
     if tun:
 
@@ -280,51 +359,58 @@ def start_udp_loop(cfg, tun):
                     break
                 if not packet:
                     break
-                # Only handle IPv4 UDP packets from tun
-                if len(packet) < 20:
+
+                # IPv4/IPv6 from TUN
+                if len(packet) < 1:
                     continue
                 version = packet[0] >> 4
-                if version != 4:
-                    # Only IPv4 supported for now
-                    continue
-                proto = packet[9]
-                if proto != socket.IPPROTO_UDP:
-                    continue
-                src_ip = socket.inet_ntoa(packet[12:16])
-                dst_ip = socket.inet_ntoa(packet[16:20])
-                src_port = int.from_bytes(packet[20:22], 'big')
-                dst_port = int.from_bytes(packet[22:24], 'big')
-                payload = packet[28:]
-                client_key = (src_ip, src_port)
-                # If we have a client for this dest, forward to it
-                if client_key in remote_map:
-                    client_addr = remote_map[client_key]
+
+                if version == 4:
+                    if len(packet) < 28:
+                        continue
+                    if packet[9] != socket.IPPROTO_UDP:
+                        continue
+                    src_ip = socket.inet_ntoa(packet[12:16])
+                    src_port = int.from_bytes(packet[20:22], "big")
+                    payload = packet[28:]
+                    client_key = (src_ip, src_port)
+
+                elif version == 6:
+                    if len(packet) < 48:
+                        continue
+                    if packet[6] != socket.IPPROTO_UDP:
+                        continue
+                    src_ip = socket.inet_ntop(socket.AF_INET6, packet[8:24])
+                    src_port = int.from_bytes(packet[40:42], "big")
+                    payload = packet[48:]
+                    client_key = (src_ip, src_port)
+
                 else:
-                    # No mapping, drop
+                    continue
+
+                if client_key not in remote_map:
                     logger.warning(
-                        f"Received UDP packet from {src_ip}:{src_port} with "
-                        "no client mapping for {dst_ip}:{dst_port}"
+                        "Received UDP from %s:%d with no client mapping",
+                        client_key[0],
+                        client_key[1],
                     )
                     continue
-                # Build SOCKS UDP response
+
+                client_addr = remote_map[client_key]
+
+                # Build SOCKS5 UDP response
                 try:
-                    if ':' in src_ip:
+                    if ":" in src_ip:
                         addr_bytes = socket.inet_pton(socket.AF_INET6, src_ip)
                         resp_atyp = 0x04
                     else:
                         addr_bytes = socket.inet_aton(src_ip)
                         resp_atyp = 0x01
-                    port_bytes = src_port.to_bytes(2, 'big')
+                    port_bytes = src_port.to_bytes(2, "big")
                     resp_header = (
                         b"\x00\x00\x00" + bytes([resp_atyp]) + addr_bytes + port_bytes
                     )
-                except Exception as e:
-                    logger.error(
-                        "Failed to build UDP response header for %s: %s", src_ip, e
-                    )
-                    continue
-                response_data = resp_header + payload
-                try:
+                    response_data = resp_header + payload
                     udp_sock.sendto(response_data, client_addr)
                 except Exception as e:
                     logger.error(
@@ -335,6 +421,7 @@ def start_udp_loop(cfg, tun):
                     )
 
         threading.Thread(target=tun_reader, daemon=True).start()
+
     # Main loop to handle incoming UDP datagrams on socket
     logger.debug("[BOOT] Entering UDP receive loop...")
 
@@ -343,27 +430,23 @@ def start_udp_loop(cfg, tun):
             logger.debug("[LOOP] Waiting for UDP packet...")
             data, addr = udp_sock.recvfrom(65535)
             logger.debug(
-                "[TRACE] --- UDP packet received from %s:%d ---",
-                addr[0],
-                addr[1],
+                "[TRACE] --- UDP packet received from %s:%d ---", addr[0], addr[1]
+            )
+            logger.debug(
+                "[DEBUG] Got UDP from %s:%d, len=%d", addr[0], addr[1], len(data)
             )
 
-            logger.debug(
-                "[DEBUG] Got UDP from %s:%d, len=%d",
-                addr[0],
-                addr[1],
-                len(data),
-            )
             client_ip, client_port = addr[0], addr[1]
+            norm_ip = _normalize_ip_for_acl(client_ip)
             try:
-                ip_obj = ip_address(client_ip)
+                ip_obj = ip_address(norm_ip)
             except ValueError:
                 ip_obj = None
             is_client = ip_obj is not None and any(
                 ip_obj in net for net in cfg.allowed_clients
             )
 
-            # ✅ ДОПОЛНИТЕЛЬНЫЕ ЛОГИ
+            # extra trace
             logger.debug("[TRACE] UDP packet from: %s:%d", client_ip, client_port)
             logger.debug("[TRACE] Evaluated ip_obj: %s", ip_obj)
             logger.debug("[TRACE] allowed_clients: %s", cfg.allowed_clients)
@@ -372,9 +455,12 @@ def start_udp_loop(cfg, tun):
         except Exception as e:
             logger.error("UDP socket error: %s", e)
             break
+
+        # duplicate vars for clarity below
         client_ip, client_port = addr[0], addr[1]
+        norm_ip = _normalize_ip_for_acl(client_ip)
         try:
-            ip_obj = ip_address(client_ip)
+            ip_obj = ip_address(norm_ip)
         except ValueError:
             ip_obj = None
         is_client = ip_obj is not None and any(
@@ -398,28 +484,27 @@ def start_udp_loop(cfg, tun):
                     handler.handle_client_packet(data, addr)
                 except Exception as e:
                     logger.error("Exception in handle_client_packet: %s", e)
-
             else:
-                # Handle direct UDP forward (no TUN)
-
+                # Direct UDP forward (no TUN)
                 if len(data) < 4:
                     continue
                 if data[0] != 0x00 or data[1] != 0x00:
                     continue
-                frag = data[2]
-                if frag != 0x00:
+                if data[2] != 0x00:
                     continue
                 atyp = data[3]
                 off = 4
                 dest_addr = None
                 dest_port = None
+
                 if atyp == 0x01:
                     if len(data) < off + 6:
                         continue
                     dest_addr = socket.inet_ntoa(data[off : off + 4])
                     off += 4
-                    dest_port = int.from_bytes(data[off : off + 2], 'big')
+                    dest_port = int.from_bytes(data[off : off + 2], "big")
                     off += 2
+
                 elif atyp == 0x03:
                     if len(data) < off + 1:
                         continue
@@ -428,19 +513,24 @@ def start_udp_loop(cfg, tun):
                     if len(data) < off + name_len + 2:
                         continue
                     dest_name = data[off : off + name_len].decode(
-                        'ascii', errors='ignore'
+                        "ascii", errors="ignore"
                     )
                     off += name_len
-                    dest_port = int.from_bytes(data[off : off + 2], 'big')
+                    dest_port = int.from_bytes(data[off : off + 2], "big")
                     off += 2
                     try:
-                        dest_addr = socket.gethostbyname(dest_name)
-                    except Exception as e:
+                        info_list = socket.getaddrinfo(
+                            dest_name, dest_port, proto=socket.IPPROTO_UDP
+                        )
+                        dest_addr = info_list[0][4][0] if info_list else None
+                    except Exception:
                         logger.warning(
-                            f"[UDP-DENY ] {client_ip}:{client_port}"
-                            f" → {dest_name}:{dest_port} reason=resolve_fail"
+                            f"[UDP-DENY ] {client_ip}:{client_port} → {dest_name}:{dest_port} reason=resolve_fail"
                         )
                         continue
+                    if dest_addr is None:
+                        continue
+
                 elif atyp == 0x04:
                     if len(data) < off + 18:
                         continue
@@ -451,14 +541,17 @@ def start_udp_loop(cfg, tun):
                     except OSError:
                         continue
                     off += 16
-                    dest_port = int.from_bytes(data[off : off + 2], 'big')
+                    dest_port = int.from_bytes(data[off : off + 2], "big")
                     off += 2
+
                 else:
                     continue
+
                 payload = data[off:]
                 if dest_addr is None:
                     continue
-                # Filtering
+
+                # Filtering (reuse same logic as above)
                 allowed = True
                 reason = "deny_rule"
                 try:
@@ -482,38 +575,39 @@ def start_udp_loop(cfg, tun):
                             allowed = False
                 else:
                     allowed = False
+
                 if not allowed:
                     logger.warning(
-                        f"[UDP-DENY ] {client_ip}:{client_port}"
-                        f" → {dest_addr}:{dest_port} reason={reason}"
+                        f"[UDP-DENY ] {client_ip}:{client_port} → {dest_addr}:{dest_port} reason={reason}"
                     )
                     continue
+
                 # Forward to remote
                 try:
                     logger.debug(
-                        "[SEND] Sending UDP to %s:%d (payload %d bytes): %s",
+                        "[SEND] Sending UDP to %s:%d (payload %d bytes)",
                         dest_addr,
                         dest_port,
                         len(payload),
-                        payload.hex(),
                     )
-                    udp_sock.sendto(payload, (dest_addr, dest_port))
+                    send_addr = dest_addr
+                    if family == socket.AF_INET6 and ip_address(dest_addr).version == 4:
+                        send_addr = f"::ffff:{dest_addr}"
+                    udp_sock.sendto(payload, (send_addr, dest_port))
                 except Exception as e:
                     logger.error(
-                        "Failed to relay UDP to %s:%d - %s",
-                        dest_addr,
-                        dest_port,
-                        e,
+                        "Failed to relay UDP to %s:%d - %s", dest_addr, dest_port, e
                     )
                     continue
+
                 # Update mapping for return traffic
                 remote_map[(dest_addr, dest_port)] = addr
                 logger.info(
-                    f"[UDP-ALLOW] {client_ip}:{client_port}"
-                    f" → {dest_addr}:{dest_port} len={len(payload)}"
+                    f"[UDP-ALLOW] {client_ip}:{client_port} → {dest_addr}:{dest_port} len={len(payload)}"
                 )
+
         else:
-            # UDP datagram from remote host
+            # UDP datagram from remote host (direct mode only)
             logger.debug(
                 "[REJECT] UDP from %s:%d rejected: not in allowed_clients",
                 client_ip,
@@ -522,29 +616,37 @@ def start_udp_loop(cfg, tun):
             if tun:
                 # Should not happen (remote replies handled via tun), ignore
                 continue
-            # Direct mode: relay back to client if known
+
             remote_ip, remote_port = client_ip, client_port
             if (remote_ip, remote_port) not in remote_map:
                 continue
             client_addr = remote_map[(remote_ip, remote_port)]
+
             # Build SOCKS UDP response
             try:
-                if ':' in remote_ip:
+                if ":" in remote_ip:
                     addr_bytes = socket.inet_pton(socket.AF_INET6, remote_ip)
                     resp_atyp = 0x04
                 else:
                     addr_bytes = socket.inet_aton(remote_ip)
                     resp_atyp = 0x01
-                port_bytes = remote_port.to_bytes(2, 'big')
+                port_bytes = remote_port.to_bytes(2, "big")
                 resp_header = (
                     b"\x00\x00\x00" + bytes([resp_atyp]) + addr_bytes + port_bytes
                 )
             except Exception as e:
                 logger.error(
-                    "Failed to build UDP response header for %s: %s",
-                    remote_ip,
-                    e,
+                    "Failed to build UDP response header for %s: %s", remote_ip, e
                 )
                 continue
+
             response_data = resp_header + data
-            udp_sock.sendto(response_data, client_addr)
+            try:
+                udp_sock.sendto(response_data, client_addr)
+            except Exception as e:
+                logger.error(
+                    "Failed to send UDP packet to client %s:%d - %s",
+                    client_addr[0],
+                    client_addr[1],
+                    e,
+                )
