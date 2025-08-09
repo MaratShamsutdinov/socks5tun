@@ -3,67 +3,94 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BRANCH="main"
-MSG="${1:-auto: sync $(date -u +'%Y-%m-%d %H:%M:%S UTC')}"
+USER_MSG="${1:-auto}"
+AUTO_FREEZE=${AUTO_FREEZE:-1}   # 1 = обновлять requirements.txt из .venv, 0 = не трогать
 
-# ---- helper: выбрать python (предпочтительно из .venv) ----
+# ---- выбрать python ----
 pick_python() {
   if [[ -x ".venv/bin/python" ]]; then echo ".venv/bin/python"; return; fi
-  if command -v python3 >/dev/null 2>&1; then echo "python3"; return; fi
-  if command -v python >/dev/null 2>&1;  then echo "python";  return; fi
-  echo "python3"  # на случай экзотики
+  command -v python3 >/dev/null 2>&1 && { echo python3; return; }
+  command -v python  >/dev/null 2>&1 && { echo python;  return; }
+  echo python3
 }
 PY="$(pick_python)"
 
-# ---- гарантируем upstream ----
-if ! git rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1; then
-  git branch -u "origin/${BRANCH}" "${BRANCH}" || true
-fi
-
-# ---- fetch и при необходимости подтянуть удалённые изменения ----
+# ---- upstream + fetch/pull --rebase ----
 git fetch origin || true
+git rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1 || git branch -u "origin/${BRANCH}" "${BRANCH}" || true
 if git rev-list --left-right --count "HEAD...origin/${BRANCH}" >/dev/null 2>&1; then
   behind=$(git rev-list --left-right --count "HEAD...origin/${BRANCH}" | awk '{print $2}')
-  if [[ "${behind:-0}" -gt 0 ]]; then
-    git pull --rebase origin "${BRANCH}"
+  [[ "${behind:-0}" -gt 0 ]] && git pull --rebase origin "${BRANCH}"
+fi
+
+# ---- выясняем, менялся ли requirements.txt относительно origin/BRANCH ----
+req_changed=0
+if [[ -f requirements.txt ]]; then
+  base="$(git merge-base HEAD "origin/${BRANCH}" 2>/dev/null || true)"
+  if [[ -z "$base" ]]; then
+    req_changed=1
+  elif git diff --name-only "$base" HEAD | grep -qx "requirements.txt"; then
+    req_changed=1
   fi
 fi
 
-# ---- если менялся requirements.txt в локальных коммитах — установить зависимости ----
-req_changed=0
-if [[ -f requirements.txt ]]; then
-  # base: общая точка с origin/BRANCH (или пусто, если первый пуш)
-  base="$(git merge-base HEAD "origin/${BRANCH}" 2>/dev/null || true)"
-  if [[ -z "$base" ]]; then
-    # первый пуш: если файл существует — считаем, что изменился
-    req_changed=1
-  else
-    if git diff --name-only "$base" HEAD | grep -qx "requirements.txt"; then
-      req_changed=1
+# ---- AUTO_FREEZE: при необходимости перегенерим requirements.txt из .venv ----
+req_updated_by_freeze=0
+if [[ "$AUTO_FREEZE" = "1" ]]; then
+  # выберем pip из .venv, иначе из PY
+  PIP="${PY%python}pip"
+  if [[ -x ".venv/bin/pip" ]]; then PIP=".venv/bin/pip"; fi
+  if command -v "$PIP" >/dev/null 2>&1; then
+    tmp_req="$(mktemp)"
+    "$PIP" freeze | sed '/^pkg-resources==/d' > "$tmp_req"
+    if [[ ! -f requirements.txt ]] || ! diff -q "$tmp_req" requirements.txt >/dev/null 2>&1; then
+      echo "📄 Updating requirements.txt from current env"
+      mv "$tmp_req" requirements.txt
+      req_updated_by_freeze=1
+    else
+      rm -f "$tmp_req"
     fi
   fi
 fi
 
-if [[ "$req_changed" -eq 1 ]]; then
-  echo "📦 requirements.txt changed — installing dependencies with $($PY -c 'import sys; print(sys.executable)')"
+# ---- если requirements изменился (локально или через freeze) — ставим deps ----
+if [[ -f requirements.txt && ( "$req_changed" -eq 1 || "$req_updated_by_freeze" -eq 1 ) ]]; then
+  echo "📦 Installing deps with $($PY -c 'import sys; print(sys.executable)')"
   "$PY" -m pip install --upgrade pip
   "$PY" -m pip install -r requirements.txt
 else
   echo "requirements.txt unchanged — skip deps install."
 fi
 
-# ---- добавить/закоммитить локальные правки ----
+# ---- индексируем изменения ----
 git add -A
-if ! git diff --cached --quiet; then
+
+# нет staged-изменений — выходим
+if git diff --cached --quiet; then
+  echo "Nothing to commit."
+  # но всё равно попробуем запушить, если появились локальные коммиты
+else
+  # умное сообщение
+  stat_line="$(git diff --cached --name-status | awk '{c[$1]++} END{for (k in c) printf "%s:%d ", k, c[k]}' | sed 's/ $//')"
+  [[ -z "$stat_line" ]] && stat_line="A:0 M:0 D:0"
+  ins_del="$(git diff --cached --numstat | awk '{ins+=$1; del+=$2} END{printf "+%d/-%d", ins?ins:0, del?del:0}')"
+  mapfile -t files < <(git diff --cached --name-only)
+  total=${#files[@]}; show=$(( total<10 ? total : 10 ))
+  files_list="$(printf '%s, ' "${files[@]:0:show}")"; files_list="${files_list%, }"
+  more=$(( total - show )); [[ $more -gt 0 ]] && files_list="$files_list …(+${more} more)"
+  ts="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+  MSG="${USER_MSG}: ${ts} | ${total} file(s) | ${stat_line} | ${ins_del} | ${files_list}"
   git commit -m "$MSG"
 fi
 
-# ---- пушить ТОЛЬКО если есть локальные коммиты, которых нет в origin ----
+# ---- пушим только если есть локальные коммиты впереди origin ----
 ahead=0
 if git rev-list --left-right --count "HEAD...origin/${BRANCH}" >/dev/null 2>&1; then
   ahead=$(git rev-list --left-right --count "HEAD...origin/${BRANCH}" | awk '{print $1}')
 fi
 if [[ "${ahead:-0}" -gt 0 ]]; then
   git push origin "${BRANCH}"
+  echo "Pushed to origin/${BRANCH}."
 else
   echo "Nothing to push — local == remote."
 fi
