@@ -4,6 +4,7 @@ cd "$(dirname "$0")/.."
 
 BRANCH="main"
 USER_MSG="${1:-auto}"
+
 AUTO_FREEZE=${AUTO_FREEZE:-1}   # 1 = обновлять requirements.txt из .venv, 0 = не трогать
 
 # ---- выбрать python ----
@@ -37,27 +38,35 @@ fi
 # ---- AUTO_FREEZE: при необходимости перегенерим requirements.txt из .venv ----
 req_updated_by_freeze=0
 if [[ "$AUTO_FREEZE" = "1" ]]; then
-  # выберем pip из .venv, иначе из PY
-  PIP="${PY%python}pip"
-  if [[ -x ".venv/bin/pip" ]]; then PIP=".venv/bin/pip"; fi
-  if command -v "$PIP" >/dev/null 2>&1; then
-    tmp_req="$(mktemp)"
-    "$PIP" freeze | sed '/^pkg-resources==/d' > "$tmp_req"
-    if [[ ! -f requirements.txt ]] || ! diff -q "$tmp_req" requirements.txt >/dev/null 2>&1; then
-      echo "📄 Updating requirements.txt from current env"
-      mv "$tmp_req" requirements.txt
-      req_updated_by_freeze=1
-    else
-      rm -f "$tmp_req"
-    fi
+  # Определяем pip
+  if [[ -n "${VIRTUAL_ENV:-}" && -x "$VIRTUAL_ENV/bin/pip" ]]; then
+    PIP="$VIRTUAL_ENV/bin/pip"
+  elif [[ -x ".venv/bin/pip" ]]; then
+    PIP=".venv/bin/pip"
+  elif [[ -x "/opt/venv-pyroute/bin/pip" ]]; then
+    PIP="/opt/venv-pyroute/bin/pip"
+  else
+    PIP="$PY -m pip"
+  fi
+
+  tmp_req="$(mktemp)"
+  # shellcheck disable=SC2086
+  $PIP freeze | sed '/^pkg-resources==/d' > "$tmp_req"
+
+  if [[ ! -f requirements.txt ]] || ! diff -q "$tmp_req" requirements.txt >/dev/null 2>&1; then
+    echo "📄 Updating requirements.txt from env via: $PIP"
+    mv "$tmp_req" requirements.txt
+    req_updated_by_freeze=1
+  else
+    rm -f "$tmp_req"
   fi
 fi
 
-# ---- если requirements изменился (локально или через freeze) — ставим deps ----
+# ---- если requirements изменился (локально или после freeze) — ставим deps ----
 if [[ -f requirements.txt && ( "$req_changed" -eq 1 || "$req_updated_by_freeze" -eq 1 ) ]]; then
   echo "📦 Installing deps with $($PY -c 'import sys; print(sys.executable)')"
-  "$PY" -m pip install --upgrade pip
-  "$PY" -m pip install -r requirements.txt
+  $PY -m pip install --upgrade pip
+  $PY -m pip install -r requirements.txt
 else
   echo "requirements.txt unchanged — skip deps install."
 fi

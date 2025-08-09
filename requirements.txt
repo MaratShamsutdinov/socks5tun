@@ -1,1 +1,13 @@
-pytest
+build==1.3.0
+debugpy==1.8.15
+iniconfig==2.1.0
+packaging==25.0
+pluggy==1.6.0
+psutil==7.0.0
+Pygments==2.19.2
+pyproject_hooks==1.2.0
+pyroute2==0.9.3
+pytest==8.4.1
+pytest-timeout==2.4.0
+socks5tun @ file:///opt/socks5tun
+types-psutil==7.0.0.20250801
