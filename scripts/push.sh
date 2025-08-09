@@ -51,7 +51,9 @@ if [[ "$AUTO_FREEZE" = "1" ]]; then
 
   tmp_req="$(mktemp)"
   # shellcheck disable=SC2086
-  $PIP freeze | sed '/^pkg-resources==/d' > "$tmp_req"
+  $PIP freeze --exclude-editable \
+    | sed -E '/^pkg-resources==/d; /^-e[[:space:]]+\./d; /@ file:\/\//d; /^socks5tun(@|==|[[:space:]])/d' \
+    > "$tmp_req"
 
   if [[ ! -f requirements.txt ]] || ! diff -q "$tmp_req" requirements.txt >/dev/null 2>&1; then
     echo "📄 Updating requirements.txt from env via: $PIP"

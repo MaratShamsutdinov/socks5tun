@@ -9,5 +9,4 @@ pyproject_hooks==1.2.0
 pyroute2==0.9.3
 pytest==8.4.1
 pytest-timeout==2.4.0
-socks5tun @ file:///opt/socks5tun
 types-psutil==7.0.0.20250801
