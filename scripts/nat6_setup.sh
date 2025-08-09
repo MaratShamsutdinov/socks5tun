@@ -20,22 +20,16 @@ if command -v nft >/dev/null 2>&1; then
   nft list chain ip6 nat POSTROUTING >/dev/null 2>&1 || \
     nft add chain ip6 nat POSTROUTING '{ type nat hook postrouting priority srcnat; policy accept; }'
 
-  # Эталонная форма правила — только oifname
-  RULE="ip6 saddr $PREFIX6 oifname \"$WAN_IF\" masquerade"
+  # Дедупликация: удаляем ВСЕ старые masquerade для нашего префикса (любые варианты oif/oifname, с/без counter)
+  for h in $(nft -a list chain ip6 nat POSTROUTING 2>/dev/null \
+             | awk -v p="$PREFIX6" '$0 ~ "ip6 saddr " p && $0 ~ /masquerade/ {print $NF}'); do
+    nft delete rule ip6 nat POSTROUTING handle "$h" 2>/dev/null || true
+  done
 
-  # Добавим, если ещё нет точного совпадения
-  if ! nft -a list chain ip6 nat POSTROUTING | grep -F "$RULE" >/dev/null; then
-    nft add rule ip6 nat POSTROUTING ip6 saddr $PREFIX6 oifname "$WAN_IF" masquerade
-    echo "[nat6_setup] nftables rule added"
-  else
-    echo "[nat6_setup] nftables rule already present"
-  fi
+  # Кладём одно каноничное правило
+  nft add rule ip6 nat POSTROUTING ip6 saddr $PREFIX6 oifname "$WAN_IF" counter masquerade
 
-  # Санация: удалить старые варианты с `oif "eth0"` для нашего префикса
-  nft -a list chain ip6 nat POSTROUTING \
-    | awk '/ip6 saddr/ && /'"$(echo "$PREFIX6" | sed 's|/|\\/|g')"'/ && / oif "/ {print $NF}' \
-    | xargs -r -n1 -I{} nft delete rule ip6 nat POSTROUTING handle {} || true
-
+  echo "[nat6_setup] nftables rule ensured (deduped)"
 else
   echo "[nat6_setup] nft not found; skipping NAT66"
 fi

@@ -109,21 +109,50 @@ class UDPHandler:
             offset += name_len
             dest_port = struct.unpack("!H", data[offset : offset + 2])[0]
             offset += 2
-            # Resolve domain to IP (prefer entries suitable for UDP; v4/v6 allowed)
-            try:
-                addrs = socket.getaddrinfo(
-                    dest_name, dest_port, proto=socket.IPPROTO_UDP
-                )
-            except Exception:
+
+            # Политика DNS: при "remote"/"none" не резолвим локально
+            dns_mode = getattr(self.cfg, "dns_resolver", "system")
+            if dns_mode in ("remote", "none"):
                 logger.warning(
-                    f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]} → {dest_name}:{dest_port} reason=resolve_fail"
+                    f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]} → {dest_name}:{dest_port} reason=dns_remote_mode"
                 )
                 return
+
+            # Предпочесть IPv6, если слушаем на :: (dual-stack), иначе IPv4; с фоллбеком
+            prefer_v6 = ":" in self.cfg.udp_host
+            family = socket.AF_INET6 if prefer_v6 else socket.AF_INET
+            try:
+                addrs = socket.getaddrinfo(
+                    dest_name,
+                    dest_port,
+                    family=family,
+                    type=socket.SOCK_DGRAM,
+                    proto=socket.IPPROTO_UDP,
+                )
+            except Exception:
+                addrs = []
+
+            if not addrs:
+                alt_family = (
+                    socket.AF_INET if family == socket.AF_INET6 else socket.AF_INET6
+                )
+                try:
+                    addrs = socket.getaddrinfo(
+                        dest_name,
+                        dest_port,
+                        family=alt_family,
+                        type=socket.SOCK_DGRAM,
+                        proto=socket.IPPROTO_UDP,
+                    )
+                except Exception:
+                    addrs = []
+
             if not addrs:
                 logger.warning(
                     f"[UDP-DENY ] {client_addr[0]}:{client_addr[1]} → {dest_name}:{dest_port} reason=resolve_fail"
                 )
                 return
+
             dest_addr = addrs[0][4][0]
 
         elif atyp == 0x04:  # IPv6
@@ -518,18 +547,53 @@ def start_udp_loop(cfg, tun):
                     off += name_len
                     dest_port = int.from_bytes(data[off : off + 2], "big")
                     off += 2
+
+                    # Политика DNS: при "remote"/"none" не резолвим локально
+                    dns_mode = getattr(cfg, "dns_resolver", "system")
+                    if dns_mode in ("remote", "none"):
+                        logger.warning(
+                            f"[UDP-DENY ] {client_ip}:{client_port} → {dest_name}:{dest_port} reason=dns_remote_mode"
+                        )
+                        continue
+
+                    # Предпочесть IPv6, если слушаем на :: (dual-stack), иначе IPv4; с фоллбеком
+                    prefer_v6 = family == socket.AF_INET6
+                    fam = socket.AF_INET6 if prefer_v6 else socket.AF_INET
                     try:
                         info_list = socket.getaddrinfo(
-                            dest_name, dest_port, proto=socket.IPPROTO_UDP
+                            dest_name,
+                            dest_port,
+                            family=fam,
+                            type=socket.SOCK_DGRAM,
+                            proto=socket.IPPROTO_UDP,
                         )
-                        dest_addr = info_list[0][4][0] if info_list else None
                     except Exception:
+                        info_list = []
+
+                    if not info_list:
+                        alt_fam = (
+                            socket.AF_INET
+                            if fam == socket.AF_INET6
+                            else socket.AF_INET6
+                        )
+                        try:
+                            info_list = socket.getaddrinfo(
+                                dest_name,
+                                dest_port,
+                                family=alt_fam,
+                                type=socket.SOCK_DGRAM,
+                                proto=socket.IPPROTO_UDP,
+                            )
+                        except Exception:
+                            info_list = []
+
+                    if not info_list:
                         logger.warning(
                             f"[UDP-DENY ] {client_ip}:{client_port} → {dest_name}:{dest_port} reason=resolve_fail"
                         )
                         continue
-                    if dest_addr is None:
-                        continue
+
+                    dest_addr = info_list[0][4][0]
 
                 elif atyp == 0x04:
                     if len(data) < off + 18:
