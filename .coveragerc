@@ -1,0 +1,11 @@
+[run]
+source = socks5tun
+branch = True
+omit =
+    */tests/*
+    */.venv/*
+
+[report]
+show_missing = True
+skip_covered = True
+fail_under = 85
