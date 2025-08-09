@@ -89,8 +89,7 @@ else
   total=${#files[@]}; show=$(( total<10 ? total : 10 ))
   files_list="$(printf '%s, ' "${files[@]:0:show}")"; files_list="${files_list%, }"
   more=$(( total - show )); [[ $more -gt 0 ]] && files_list="$files_list …(+${more} more)"
-  ts="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-  MSG="${USER_MSG}: ${ts} | ${total} file(s) | ${stat_line} | ${ins_del} | ${files_list}"
+  MSG="${USER_MSG}: ${total} file(s) | ${stat_line} | ${ins_del} | ${files_list}"
   git commit -m "$MSG"
 fi
 
