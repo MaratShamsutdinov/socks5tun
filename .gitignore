@@ -1,14 +1,46 @@
+# Python cache
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Packaging
 *.egg-info/
+.eggs/
+dist/
+build/
+wheelhouse/
+pip-wheel-metadata/
+
+# Virtual environments
 .venv/
 venv/
+ENV/
+env/
+
+# Environment variables files
 .env
+
+# IDEs and editors
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS-specific
 .DS_Store
+Thumbs.db
+
+# Logs and runtime
 *.log
 logs/
 *.pid
-dist/
-build/
+*.seed
+
+# Test and type check cache
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
