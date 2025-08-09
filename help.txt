@@ -42,4 +42,6 @@ pytest -q
 cd ~/socks5tun
 
 # Отправить в GitHub
-AUTO_FREEZE=1 ./scripts/push.sh "твой комментарий"
+gpush "мой комментарий"
+- либо просто
+gpush
