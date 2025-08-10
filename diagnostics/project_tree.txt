@@ -1,4 +1,4 @@
-Generated on 2025-08-08 14:33:26 by root
+Generated on 2025-08-10 13:21:03 by root
 
 === ДЕРЕВО ПРОЕКТА ===
 .
@@ -19,17 +19,37 @@ Generated on 2025-08-08 14:33:26 by root
 ├── .github
 │   └── workflows
 │       └── test.yml
+├── htmlcov
+│   ├── class_index.html
+│   ├── coverage_html_cb_6fb7b396.js
+│   ├── favicon_32_cb_58284776.png
+│   ├── function_index.html
+│   ├── .gitignore
+│   ├── index.html
+│   ├── keybd_closed_cb_ce680311.png
+│   ├── status.json
+│   ├── style_cb_6b508a39.css
+│   ├── z_0e0abb026a94b5ef_config_py.html
+│   ├── z_0e0abb026a94b5ef_dummy_tun_py.html
+│   ├── z_0e0abb026a94b5ef_logger_py.html
+│   ├── z_0e0abb026a94b5ef_run_py.html
+│   ├── z_0e0abb026a94b5ef_server_py.html
+│   └── z_0e0abb026a94b5ef_udp_handler_py.html
 ├── __pycache__
-│   ├── config.cpython-312.pyc
-│   ├── dummy_tun.cpython-312.pyc
-│   ├── logger.cpython-312.pyc
-│   ├── server.cpython-312.pyc
-│   ├── test_socks.cpython-312-pytest-8.4.1.pyc
-│   └── udp_handler.cpython-312.pyc
+├── scripts
+│   ├── connections_exporter.sh
+│   ├── coverage.sh
+│   ├── nat6_setup.sh
+│   ├── push.sh
+│   ├── README.txt
+│   ├── services_exporter.sh
+│   ├── socks5_healthcheck.sh
+│   ├── socks5_telegram_alert.sh
+│   ├── update_cf_ufw.sh
+│   └── update_socks5tun.sh
 ├── socks5tun
 │   ├── __pycache__
 │   │   ├── config.cpython-312.pyc
-│   │   ├── dummy_tun.cpython-312.pyc
 │   │   ├── __init__.cpython-312.pyc
 │   │   ├── logger.cpython-312.pyc
 │   │   ├── run.cpython-312.pyc
@@ -74,11 +94,16 @@ Generated on 2025-08-08 14:33:26 by root
 │   └── settings.json
 ├── config_dev.json
 ├── config_prod.json
+├── .coverage
+├── .coveragerc
+├── coverage.xml
+├── .gitignore
 ├── help.txt
 ├── pytest.ini
 ├── README.md
+├── requirements.txt
 ├── setup.py
 ├── socks5tun.code-workspace
 └── udo ss -plntu | grep :53
 
-16 directories, 63 files
+18 directories, 86 files

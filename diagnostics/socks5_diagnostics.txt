@@ -1,4 +1,4 @@
-Generated on 2025-08-08 14:33:26 by root
+Generated on 2025-08-10 13:21:03 by root
 
 [32m[INFO] === ТЕСТОВЫЕ ФАЙЛЫ ===(B[m
 
@@ -368,78 +368,121 @@ import fcntl
 import struct
 import sys
 import select
+import socket
+import subprocess
+import time
+import shutil
 import pytest
 
+TUNSETIFF = 0x400454CA
+IFF_TUN = 0x0001
+IFF_NO_PI = 0x1000
 
-def is_working_tun():
-    """
-    Проверяет, можно ли открыть и использовать /dev/net/tun.
-    Возвращает True только если ioctl проходит успешно.
-    """
-    try:
-        tun_fd = os.open("/dev/net/tun", os.O_RDWR)
-        TUNSETIFF = 0x400454CA
-        IFF_TUN = 0x0001
-        IFF_NO_PI = 0x1000
-        fcntl.ioctl(
-            tun_fd, TUNSETIFF, struct.pack("16sH", b"skipcheck%d", IFF_TUN | IFF_NO_PI)
-        )
-        try:
-            os.write(tun_fd, b"")
-        except OSError:
-            os.close(tun_fd)
-            return False
-        os.close(tun_fd)
-        return True
-    except OSError:
-        return False
+
+def _ip_checksum(data: bytes) -> int:
+    if len(data) % 2:
+        data += b"\x00"
+    s = sum(int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2))
+    s = (s >> 16) + (s & 0xFFFF)
+    s = (s >> 16) + (s & 0xFFFF)
+    return (~s) & 0xFFFF
+
+
+def _minimal_ipv4_packet(src="10.0.0.1", dst="10.0.0.2", proto=1) -> bytes:
+    version_ihl = 0x45  # v4, IHL=5 (20 байт)
+    tos = 0
+    total_len = 20
+    ident = 0
+    flags_frag = 0
+    ttl = 64
+    chk = 0
+    src_i = struct.unpack("!I", socket.inet_aton(src))[0]
+    dst_i = struct.unpack("!I", socket.inet_aton(dst))[0]
+    hdr = struct.pack(
+        "!BBHHHBBHII",
+        version_ihl,
+        tos,
+        total_len,
+        ident,
+        flags_frag,
+        ttl,
+        proto,
+        chk,
+        src_i,
+        dst_i,
+    )
+    chk = _ip_checksum(hdr)
+    hdr = hdr[:10] + struct.pack("!H", chk) + hdr[12:]
+    return hdr  # 20 байт
 
 
 pytestmark = pytest.mark.skipif(
     not sys.platform.startswith("linux")
     or os.getuid() != 0
     or not os.path.exists("/dev/net/tun"),
-    # or not is_working_tun(),
-    reason="Requires working /dev/net/tun and root access",
+    reason="Requires root on Linux with /dev/net/tun",
 )
+
+
+def _read_stat(path):
+    try:
+        with open(path, "r") as f:
+            return int(f.read().strip())
+    except Exception:
+        return None
 
 
 def test_linux_tun_open_read_write():
     tun_fd = os.open("/dev/net/tun", os.O_RDWR)
-    TUNSETIFF = 0x400454CA
-    IFF_TUN = 0x0001
-    IFF_NO_PI = 0x1000
-    ifs = fcntl.ioctl(
-        tun_fd, TUNSETIFF, struct.pack("16sH", b"testtun%d", IFF_TUN | IFF_NO_PI)
-    )
-    tun_name = ifs[:16].strip(b"\x00").decode("utf-8")
-    assert tun_name.startswith("testtun")
+    try:
+        ifs = fcntl.ioctl(
+            tun_fd, TUNSETIFF, struct.pack("16sH", b"testtun%d", IFF_TUN | IFF_NO_PI)
+        )
+        tun_name = ifs[:16].strip(b"\x00").decode("utf-8")
+        assert tun_name.startswith("testtun")
 
-    # Define LinuxTun class for testing
-    class LinuxTun:
-        def __init__(self, fd):
-            self.fd = fd
+        # Поднимаем интерфейс, если есть утилита ip
+        if shutil.which("ip"):
+            subprocess.run(
+                ["ip", "link", "set", tun_name, "up"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
 
-        def read(self, size=1500):
-            return os.read(self.fd, size)
+        stats_dir = f"/sys/class/net/{tun_name}/statistics"
+        rx_before = _read_stat(os.path.join(stats_dir, "rx_packets"))
+        rx_bytes_before = _read_stat(os.path.join(stats_dir, "rx_bytes"))
 
-        def write(self, data):
-            return os.write(self.fd, data)
+        pkt = _minimal_ipv4_packet()
+        try:
+            written = os.write(tun_fd, pkt)
+            assert written == len(pkt)
+        except OSError as e:
+            assert e.errno in (5, 22), f"unexpected errno: {e.errno}"
+            return
 
-        def close(self):
-            os.close(self.fd)
+        time.sleep(0.1)  # дать ядру время обновить статистику
 
-    tun = LinuxTun(tun_fd)
-    data = b"\x00\x01\x02\x03"
-    written = tun.write(data)
-    assert written == len(data)
-    # Attempt to read (non-blocking)
-    rlist, _, _ = select.select([tun_fd], [], [], 0.1)
-    if rlist:
-        recv_data = tun.read(1500)
-        # Depending on environment, recv_data could be empty or contain data
-        assert recv_data == b"" or recv_data == data
-    tun.close()
+        rx_after = _read_stat(os.path.join(stats_dir, "rx_packets"))
+        rx_bytes_after = _read_stat(os.path.join(stats_dir, "rx_bytes"))
+        if rx_before is not None and rx_after is not None:
+            assert (
+                rx_after >= rx_before + 1
+            ), f"rx_packets not increased: {rx_before} -> {rx_after}"
+        if rx_bytes_before is not None and rx_bytes_after is not None:
+            assert rx_bytes_after >= rx_bytes_before + len(
+                pkt
+            ), f"rx_bytes not increased enough"
+
+        rlist, _, _ = select.select([tun_fd], [], [], 0.05)
+        if rlist:
+            _ = os.read(tun_fd, 1500)
+    finally:
+        try:
+            os.close(tun_fd)
+        except OSError:
+            pass
 
 # --- tests/test_logger.py ---
 import logging

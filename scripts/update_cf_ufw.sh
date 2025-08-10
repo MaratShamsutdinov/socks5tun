@@ -1,45 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PORTS=("80" "443")
-CF_V4_URL="https://www.cloudflare.com/ips-v4"
-CF_V6_URL="https://www.cloudflare.com/ips-v6"
+PORTS=(80 443)
+UFW() { ufw --force "$@"; }
 
-fetch_list() { curl -fsS "$1"; }
-
-# Удаляем старые CF-правила по комменту "# CF-<PORT>"
-delete_old_cf_rules() {
+# Удаляем все старые правила с комментом CF-<PORT> (v4 и v6)
+delete_cf_rules() {
   local port="$1"
-  local nums
-  nums=$(ufw status numbered | sed -n "s/^\[\s*\([0-9]\+\)\]\s\+.*# CF-${port}\s*$/\1/p" | sort -rn)
-  for n in $nums; do ufw --force delete "$n"; done
+  # вытаскиваем номера правил по комменту, удаляем сверху вниз
+  mapfile -t nums < <(ufw status numbered | sed -n "s/^\[\s*\([0-9]\+\)\]\s\+.*# CF-${port}.*$/\1/p" | sort -rn)
+  for n in "${nums[@]:-}"; do UFW delete "$n"; done
 }
 
-# Безопасная вставка в начало, с откатом на append
-ufw_add_top() {
-  if ufw --force insert 1 "$@" 2>/dev/null; then
-    true
-  else
-    ufw --force "$@"
-  fi
+add_cf_rules_for_port() {
+  local port="$1"
+  # v4 сначала
+  curl -fsS https://www.cloudflare.com/ips-v4 | while read -r net; do
+    [[ -n "$net" ]] && UFW prepend allow from "$net" to any port "$port" proto tcp comment "CF-${port}"
+  done
+  # затем v6
+  curl -fsS https://www.cloudflare.com/ips-v6 | while read -r net; do
+    [[ -n "$net" ]] && UFW prepend allow from "$net" to any port "$port" proto tcp comment "CF-${port}"
+  done
+  # и убедимся, что есть deny (оба стека)
+  ufw status | grep -qE "(^| )${port}/tcp.*DENY" || UFW deny "${port}/tcp"
 }
 
-for PORT in "${PORTS[@]}"; do
-  delete_old_cf_rules "$PORT"
-
-  # v4
-  while read -r cidr; do
-    [ -n "$cidr" ] && ufw_add_top allow proto tcp from "$cidr" to any port "$PORT" comment "CF-${PORT}"
-  done < <(fetch_list "$CF_V4_URL")
-
-  # v6
-  while read -r cidr; do
-    [ -n "$cidr" ] && ufw_add_top allow proto tcp from "$cidr" to any port "$PORT" comment "CF-${PORT}"
-  done < <(fetch_list "$CF_V6_URL")
+for p in "${PORTS[@]}"; do
+  delete_cf_rules "$p"
+  add_cf_rules_for_port "$p"
 done
 
-# Явные DENY ниже ALLOW (не критично, но удобно для читаемости)
-ufw --force deny in 80/tcp || true
-ufw --force deny in 443/tcp || true
-
-echo "CF UFW rules updated."
+echo "UFW updated for Cloudflare IPs on ports: ${PORTS[*]}"

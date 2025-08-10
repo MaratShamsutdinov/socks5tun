@@ -180,6 +180,31 @@ dump_configs() {
     ["nginx -T"]="$USE_SUDO nginx -T"
     ["websocat --version"]="/usr/local/bin/websocat --version || websocat --version"
     ["listen 80/5001/5000"]="ss -ltnp | egrep ':80\\b|:5001\\b|:5000\\b' || true"
+    # кто слушает ещё и 11443 (stunnel) и 443 на всякий случай
+    ["listen 80/443/11443/5001/5000"]='ss -ltnp | egrep ":80\b|:443\b|:11443\b|:5001\b|:5000\b" || true'
+
+    # статусы сервисов и их enable-флаги
+    ["systemctl is-enabled (nginx/ws-bridge/socks5tun/stunnel)"]='$USE_SUDO bash -lc "for s in nginx ws-bridge socks5tun stunnel; do echo -n \"$s: \"; systemctl is-enabled $s 2>/dev/null || echo not-found; done"'
+    ["systemctl is-active  (nginx/ws-bridge/socks5tun/stunnel)"]='$USE_SUDO bash -lc "for s in nginx ws-bridge socks5tun stunnel; do echo -n \"$s: \"; systemctl is-active  $s 2>/dev/null || echo not-found; done"'
+
+    # конкретно про stunnel
+    ["systemctl status stunnel"]="$USE_SUDO systemctl status stunnel --no-pager"
+    ["systemctl cat stunnel"]="$USE_SUDO systemctl cat stunnel"
+
+    # ufw — с номерами, чтобы было видно порядок
+    ["ufw status numbered"]="$USE_SUDO ufw status numbered"
+
+    # nginx билд-опции (в т.ч. http_v2)
+    ["nginx -V"]="$USE_SUDO nginx -V 2>&1"
+
+    # таймеры (на будущее, если добавим systemd timer для UFW)
+    ["systemd timers"]="$USE_SUDO systemctl list-timers --all --no-pager"
+
+    # где лежит/на что ссылается скрипт UFW
+    ["update_cf_ufw.sh target"]='ls -l /usr/local/sbin/update_cf_ufw.sh; readlink -f /usr/local/sbin/update_cf_ufw.sh || true'
+
+    # журнал блокировок UFW (если включено логирование)
+    ["/var/log/ufw.log tail"]="$USE_SUDO tail -n 100 /var/log/ufw.log 2>/dev/null || true"
   )
   for k in "${!CMDS[@]}"; do append_cmd "$k" "${CMDS[$k]}"; done
 
@@ -239,6 +264,7 @@ dump_configs() {
       "openssl x509 -in /etc/stunnel/stunnel.pem -noout -text"
   fi
 }
+
 
 
 # ----------------------------------------------------------------------------
