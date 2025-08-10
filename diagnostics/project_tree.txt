@@ -1,4 +1,4 @@
-Generated on 2025-08-10 14:04:22 by root
+Generated on 2025-08-10 15:45:32 by root
 
 === ДЕРЕВО ПРОЕКТА ===
 .
@@ -50,6 +50,7 @@ Generated on 2025-08-10 14:04:22 by root
 ├── socks5tun
 │   ├── __pycache__
 │   │   ├── config.cpython-312.pyc
+│   │   ├── dummy_tun.cpython-312.pyc
 │   │   ├── __init__.cpython-312.pyc
 │   │   ├── logger.cpython-312.pyc
 │   │   ├── run.cpython-312.pyc
@@ -106,4 +107,4 @@ Generated on 2025-08-10 14:04:22 by root
 ├── socks5tun.code-workspace
 └── udo ss -plntu | grep :53
 
-18 directories, 86 files
+18 directories, 87 files
