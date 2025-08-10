@@ -1,48 +1,31 @@
-name: CI
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+- name: Install dependencies (without self)
+  shell: bash
+  run: |
+    set -euxo pipefail
+    python -m pip install --upgrade pip
 
-jobs:
-  tests:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-    steps:
-      - uses: actions/checkout@v4
+    # 1) убрать уже установленный/закешированный socks5tun
+    pip uninstall -y socks5tun || true
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          # кеш можно оставить, но это не критично
-          cache: "pip"
-          cache-dependency-path: |
-            requirements.txt
-            pyproject.toml
+    # 2) НЕ устанавливать себя из requirements.txt
+    if [ -f requirements.txt ]; then
+      # вырезаем любые строки с socks5tun (с версией или без)
+      grep -viE '^\s*socks5tun(\s|==|>=|$)' requirements.txt > req_noself.txt || true
+      if [ -s req_noself.txt ]; then
+        pip install -r req_noself.txt
+      fi
+    fi
 
-      - name: Install dependencies (without self)
-        run: |
-          python -m pip install --upgrade pip
-          # 1) убрать уже установленный/закешированный socks5tun
-          pip uninstall -y socks5tun || true
-          # 2) НЕ устанавливать себя из requirements.txt
-          if [ -f requirements.txt ]; then
-            grep -viE '^socks5tun([[:space:]]|==|>=|$)' requirements.txt > req_noself.txt || true
-            pip install -r req_noself.txt
-          fi
-          # 3) поставить проект из исходников
-          pip install -e .  # или: pip install --no-cache-dir --force-reinstall .
-          # 4) показать, откуда импортируется пакет (диагностика)
-          python - <<'PY'
+    # 3) поставить проект из исходников
+    pip install -e .
+
+    # 4) показать, откуда импортируется пакет (диагностика)
+    python - <<'PY'
 import socks5tun, inspect, sys
 print("PATH:", socks5tun.__file__)
 print("PYTHON:", sys.version)
 print("VERSION:", getattr(socks5tun, "__version__", "n/a"))
 PY
 
-      - name: Run tests
-        run: pytest -q
+- name: Run tests
+  run: pytest -q
