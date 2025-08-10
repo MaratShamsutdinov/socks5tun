@@ -18,37 +18,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
+          cache: "pip"
           cache-dependency-path: |
             requirements.txt
-            pyproject.toml
 
-      - name: Install dependencies (without self)
-        shell: bash
+      - name: Install dependencies
         run: |
-          set -euxo pipefail
           python -m pip install --upgrade pip
-
-          # 1) убрать уже установленный/закешированный socks5tun
-          pip uninstall -y socks5tun || true
-
-          # 2) НЕ ставить себя из requirements.txt
           if [ -f requirements.txt ]; then
-            # вырежем любые строки, начинающиеся на socks5tun (без/с версией)
-            awk 'BEGIN{IGNORECASE=1} !/^[[:space:]]*socks5tun([[:space:]]|==|>=|$)/' requirements.txt > req_noself.txt || true
-            if [ -s req_noself.txt ]; then
-              pip install -r req_noself.txt
-            fi
+            pip install -r requirements.txt
           fi
-
-          # 3) поставить проект из исходников (как на сервере)
-          pip install -e .
-
-          # 4) диагностика: откуда импортируется пакет
-          python -c "import socks5tun,sys; print('PATH:', socks5tun.__file__); print('PYTHON:', sys.version); print('VERSION:', getattr(socks5tun,'__version__','n/a'))"
+          pip install .  # установить сам пакет
 
       - name: Run tests
-        shell: bash
-        run: |
-          set -euxo pipefail
-          pytest -q
+        run: pytest -q
