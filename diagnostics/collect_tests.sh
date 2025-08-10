@@ -163,16 +163,23 @@ dump_configs() {
   declare -A CMDS=(
     ["ufw status"]="$USE_SUDO ufw status verbose | sed -r 's/\\x1B\\[[0-9;]*[mK]//g'"
     ["iptables-save"]="$USE_SUDO iptables-save"
-    ["sysctl ip_forward/tcp"]="$USE_SUDO sysctl -a | grep -E 'net.ipv4.ip_forward|^tcp_'"
+    ["sysctl ip_forward/tcp"]="$USE_SUDO sysctl -a | grep -E 'net\\.ipv4\\.ip_forward|^tcp_'"
     ["ip a"]="ip a"
     ["ip r"]="ip r"
     ["ss -tunlp"]="(command -v ss &>/dev/null && (ss -tunlp || $USE_SUDO ss -tunlp))"
     ["systemctl running"]="$USE_SUDO systemctl list-units --type=service --state=running"
     ["crontab root"]="$USE_SUDO crontab -l -u root"
-    ["dpkg (net)"]="dpkg -l | grep -Ei 'openvpn|stunnel|iptables|wireguard|net-tools'"
+    ["dpkg (net)"]="dpkg -l | grep -Ei 'openvpn|stunnel|iptables|wireguard|net-tools|nginx'"
     ["journal socks5tun"]="$USE_SUDO journalctl -u socks5tun.service --no-pager -n 100 | sed -r 's/\\x1B\\[[0-9;]*[mK]//g'"
     ["nft list ruleset"]="$USE_SUDO nft list ruleset"
     ["pip freeze"]="pip freeze"
+
+    # --- добавлено для WS-моста/NGINX ---
+    ["systemctl ws-bridge"]="$USE_SUDO systemctl status ws-bridge --no-pager"
+    ["journal ws-bridge"]="$USE_SUDO journalctl -u ws-bridge --no-pager -n 200 | sed -r 's/\\x1B\\[[0-9;]*[mK]//g'"
+    ["nginx -T"]="$USE_SUDO nginx -T"
+    ["websocat --version"]="/usr/local/bin/websocat --version || websocat --version"
+    ["listen 80/5001/5000"]="ss -ltnp | egrep ':80\\b|:5001\\b|:5000\\b' || true"
   )
   for k in "${!CMDS[@]}"; do append_cmd "$k" "${CMDS[$k]}"; done
 
@@ -184,7 +191,7 @@ dump_configs() {
     ["/etc/systemd/system/socks5tun-update.service"]="socks5tun-update.service"
     ["/usr/local/bin/update_socks5tun.sh"]="update_socks5tun.sh"
     ["/etc/systemd/system/socks5_healthcheck.service"]="socks5_healthcheck.service"
-    ["/etc/systemd/system/socks5-healthcheck.timer"]="socks5-healthcheck.timer"
+    ["/etc/systemd/system/socks5-healthcheck.timer"]="socks5_healthcheck.timer"
     ["/etc/systemd/system/restart-socks5tun@.service"]="restart-socks5tun@.service"
     ["/usr/local/bin/socks5_healthcheck.sh"]="socks5_healthcheck.sh"
     ["/usr/local/bin/socks5_telegram_alert.sh"]="socks5_telegram_alert.sh"
@@ -193,10 +200,37 @@ dump_configs() {
     ["/etc/init.d/stunnel4"]="init.d stunnel4"
     ["/etc/resolv.conf"]="resolv.conf"
     ["/var/lib/socks5health/last_status"]="last_status"
+
+    # --- добавлено: WS-мост и nginx WS-конфиг ---
+    ["/etc/systemd/system/ws-bridge.service"]="ws-bridge.service"
+    ["/etc/nginx/sites-available/ws.conf"]="nginx ws.conf (available)"
+    # симлинк покажем отдельно ниже
+    ["/etc/nginx/nginx.conf"]="nginx.conf"
+
+    # твои проектные скрипты
+    ["/opt/socks5tun/scripts/nat6_setup.sh"]="nat6_setup.sh"
+    ["/opt/socks5tun/scripts/update_cf_ufw.sh"]="update_cf_ufw.sh (Cloudflare UFW) - optional"
   )
   for path in "${!FILE_DUMPS[@]}"; do
     append_cfg "$path" "${FILE_DUMPS[$path]}"
   done
+
+  # симлинк sites-enabled → покажем сам линк и целевой путь
+  if [[ -L /etc/nginx/sites-enabled/ws.conf ]]; then
+    echo -e "\n# --- nginx ws.conf symlink ---" >>"$CONFIG_FILE"
+    ls -l /etc/nginx/sites-enabled/ws.conf >>"$CONFIG_FILE" 2>/dev/null || true
+    REAL_TARGET="$(readlink -f /etc/nginx/sites-enabled/ws.conf 2>/dev/null || true)"
+    if [[ -n "$REAL_TARGET" && -f "$REAL_TARGET" ]]; then
+      echo -e "\n# --- nginx ws.conf (resolved target) ---" >>"$CONFIG_FILE"
+      $USE_SUDO cat "$REAL_TARGET" >>"$CONFIG_FILE" 2>/dev/null || true
+    fi
+  fi
+
+  # логи nginx по WS — только хвост, чтобы не раздуть файл
+  if [[ -f /var/log/nginx/ws_access.log ]]; then
+    echo -e "\n# --- /var/log/nginx/ws_access.log (tail -n 20) ---" >>"$CONFIG_FILE"
+    $USE_SUDO tail -n 20 /var/log/nginx/ws_access.log >>"$CONFIG_FILE" 2>/dev/null || true
+  fi
 
   # stunnel.pem публичная часть
   if command -v openssl &>/dev/null; then
