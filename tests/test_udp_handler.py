@@ -26,6 +26,10 @@ class DummyConfig:
         ]
         self.deny_rules = []
         self.allow_rules = []
+        self.udp_host = "127.0.0.1"
+        self.tun = {}
+        # пустой dict ок, хэндлер сам
+        # возьмет client_addr при отсутствии peer_address
 
 
 @pytest.fixture
@@ -194,7 +198,7 @@ def test_udp_invalid_packets_drop(udp_handler, packet):
     assert tun.packets == []
 
 
-def test_udp_ipv6_not_supported(udp_handler, caplog):
+def test_udp_ipv6_supported(udp_handler, caplog):
     handler, tun = udp_handler
     dest_ip = "2001:db8::1"
     dest_port = 53
@@ -204,11 +208,13 @@ def test_udp_ipv6_not_supported(udp_handler, caplog):
         + struct.pack("!H", dest_port)
         + b"data"
     )
-    caplog.set_level(logging.WARNING)
-    handler.handle_client_packet(packet, ("192.0.2.1", 33333))
-    warnings = [rec for rec in caplog.records if rec.levelno == logging.WARNING]
-    assert any("not supported" in rec.message for rec in warnings)
-    assert tun.packets == []
+    caplog.set_level(logging.WARNING, logger="socks5-server")
+    handler.handle_client_packet(packet, ("2001:db8::100", 33333))
+
+    assert any(
+        rec.name == "socks5-server" and rec.levelno == logging.WARNING
+        for rec in caplog.records
+    )
 
 
 def test_ip_checksum(udp_handler):

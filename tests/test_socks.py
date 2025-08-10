@@ -28,6 +28,15 @@ class DummyConfig:
             "192.168.0.0/16",
             "172.16.0.0/12",
         ]
+        # >>> добавь недостающие атрибуты:
+        self.udp_host = "127.0.0.1"  # чтобы резолв доменов работал без AttributeError
+        self.tun = (
+            {}
+        )  # пустой dict ок: хэндлер возьмёт client_addr как src при отсутствии peer_address
+
+        # (не обязательно, но можно явно задать)
+        self.deny_rules = []
+        self.allow_rules = []
 
 
 @pytest.fixture
