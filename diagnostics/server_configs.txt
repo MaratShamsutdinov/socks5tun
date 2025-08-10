@@ -1,5 +1,2193 @@
-Generated on 2025-08-10 13:21:03 by root
+Generated on 2025-08-10 14:04:22 by root
 
 [32m[INFO] === SERVER CONFIGS ===(B[m
 
-# --- systemctl is-active  (nginx/ws-bridge/socks5tun/stunnel) ---
+# --- update_cf_ufw.sh target ---
+lrwxrwxrwx 1 root root 39 Aug 10 12:01 /usr/local/sbin/update_cf_ufw.sh -> /opt/socks5tun/scripts/update_cf_ufw.sh
+/opt/socks5tun/scripts/update_cf_ufw.sh
+
+# --- dpkg (net) ---
+ii  bind9                           1:9.18.30-0ubuntu0.24.04.2                  amd64        Internet Domain Name Server
+ii  bind9-dnsutils                  1:9.18.30-0ubuntu0.24.04.2                  amd64        Clients provided with BIND 9
+ii  bind9-host                      1:9.18.30-0ubuntu0.24.04.2                  amd64        DNS Lookup Utility
+ii  bind9-libs:amd64                1:9.18.30-0ubuntu0.24.04.2                  amd64        Shared Libraries used by BIND 9
+ii  bind9-utils                     1:9.18.30-0ubuntu0.24.04.2                  amd64        Utilities for BIND 9
+ii  charon-systemd                  5.9.13-2ubuntu4                             amd64        strongSwan IPsec client, systemd support
+ii  grafana                         12.1.0                                      amd64        Grafana
+ii  iptables                        1.8.10-3ubuntu2                             amd64        administration tools for packet filtering and NAT
+ii  libcharon-extauth-plugins       5.9.13-2ubuntu4                             amd64        strongSwan charon library (extended authentication plugins)
+ii  libcharon-extra-plugins         5.9.13-2ubuntu4                             amd64        strongSwan charon library (extra plugins)
+ii  libstrongswan                   5.9.13-2ubuntu4                             amd64        strongSwan utility and crypto library
+ii  libstrongswan-extra-plugins     5.9.13-2ubuntu4                             amd64        strongSwan utility and crypto library (extra plugins)
+ii  libstrongswan-standard-plugins  5.9.13-2ubuntu4                             amd64        strongSwan utility and crypto library (standard plugins)
+ii  net-tools                       2.10-0.1ubuntu4.4                           amd64        NET-3 networking toolkit
+ii  nginx                           1.24.0-2ubuntu7.4                           amd64        small, powerful, scalable web/proxy server
+ii  nginx-common                    1.24.0-2ubuntu7.4                           all          small, powerful, scalable web/proxy server - common files
+ii  strongswan                      5.9.13-2ubuntu4                             all          IPsec VPN solution metapackage
+ii  strongswan-charon               5.9.13-2ubuntu4                             amd64        strongSwan Internet Key Exchange daemon
+ii  strongswan-libcharon            5.9.13-2ubuntu4                             amd64        strongSwan charon library
+ii  strongswan-pki                  5.9.13-2ubuntu4                             amd64        strongSwan IPsec client, pki command
+ii  strongswan-starter              5.9.13-2ubuntu4                             amd64        strongSwan daemon starter and configuration file parser
+ii  strongswan-swanctl              5.9.13-2ubuntu4                             amd64        strongSwan IPsec client, swanctl command
+
+# --- nft list ruleset ---
+table ip filter {
+	chain ufw-before-logging-input {
+	}
+
+	chain ufw-before-logging-output {
+	}
+
+	chain ufw-before-logging-forward {
+	}
+
+	chain ufw-before-input {
+		iifname "lo" counter packets 1148675 bytes 161645057 accept
+		ct state related,established counter packets 866760 bytes 374162546 accept
+		ct state invalid counter packets 2439 bytes 979674 jump ufw-logging-deny
+		ct state invalid counter packets 2439 bytes 979674 drop
+		ip protocol icmp icmp type destination-unreachable counter packets 0 bytes 0 accept
+		ip protocol icmp icmp type time-exceeded counter packets 0 bytes 0 accept
+		ip protocol icmp icmp type parameter-problem counter packets 0 bytes 0 accept
+		ip protocol icmp icmp type echo-request counter packets 22957 bytes 1549696 accept
+		udp sport 67 udp dport 68 counter packets 0 bytes 0 accept
+		counter packets 74423 bytes 7679257 jump ufw-not-local
+		ip daddr 224.0.0.251 udp dport 5353 counter packets 0 bytes 0 accept
+		ip daddr 239.255.255.250 udp dport 1900 counter packets 0 bytes 0 accept
+		counter packets 74423 bytes 7679257 jump ufw-user-input
+	}
+
+	chain ufw-before-output {
+		oifname "lo" counter packets 1148675 bytes 161645057 accept
+		ct state related,established counter packets 872950 bytes 261321404 accept
+		counter packets 19609 bytes 1671290 jump ufw-user-output
+	}
+
+	chain ufw-before-forward {
+		ct state related,established counter packets 0 bytes 0 accept
+		ip protocol icmp icmp type destination-unreachable counter packets 0 bytes 0 accept
+		ip protocol icmp icmp type time-exceeded counter packets 0 bytes 0 accept
+		ip protocol icmp icmp type parameter-problem counter packets 0 bytes 0 accept
+		ip protocol icmp icmp type echo-request counter packets 0 bytes 0 accept
+		counter packets 0 bytes 0 jump ufw-user-forward
+	}
+
+	chain ufw-after-input {
+		udp dport 137 counter packets 20 bytes 1560 jump ufw-skip-to-policy-input
+		udp dport 138 counter packets 0 bytes 0 jump ufw-skip-to-policy-input
+		tcp dport 139 counter packets 68 bytes 3432 jump ufw-skip-to-policy-input
+		tcp dport 445 counter packets 203 bytes 9828 jump ufw-skip-to-policy-input
+		udp dport 67 counter packets 0 bytes 0 jump ufw-skip-to-policy-input
+		udp dport 68 counter packets 0 bytes 0 jump ufw-skip-to-policy-input
+		fib daddr type broadcast counter packets 0 bytes 0 jump ufw-skip-to-policy-input
+	}
+
+	chain ufw-after-output {
+	}
+
+	chain ufw-after-forward {
+	}
+
+	chain ufw-after-logging-input {
+		limit rate 3/minute burst 10 packets counter packets 162 bytes 44819 log prefix "[UFW BLOCK] "
+	}
+
+	chain ufw-after-logging-output {
+	}
+
+	chain ufw-after-logging-forward {
+		limit rate 3/minute burst 10 packets counter packets 0 bytes 0 log prefix "[UFW BLOCK] "
+	}
+
+	chain ufw-reject-input {
+	}
+
+	chain ufw-reject-output {
+	}
+
+	chain ufw-reject-forward {
+	}
+
+	chain ufw-track-input {
+	}
+
+	chain ufw-track-output {
+		ip protocol tcp ct state new counter packets 6870 bytes 480708 accept
+		ip protocol udp ct state new counter packets 12042 bytes 1141449 accept
+	}
+
+	chain ufw-track-forward {
+	}
+
+	chain INPUT {
+		type filter hook input priority filter; policy drop;
+		counter packets 2115254 bytes 546016230 jump ufw-before-logging-input
+		counter packets 2115254 bytes 546016230 jump ufw-before-input
+		counter packets 45404 bytes 5997804 jump ufw-after-input
+		counter packets 45113 bytes 5982984 jump ufw-after-logging-input
+		counter packets 45113 bytes 5982984 jump ufw-reject-input
+		counter packets 45113 bytes 5982984 jump ufw-track-input
+	}
+
+	chain OUTPUT {
+		type filter hook output priority filter; policy accept;
+		counter packets 2041234 bytes 424637751 jump ufw-before-logging-output
+		counter packets 2041234 bytes 424637751 jump ufw-before-output
+		counter packets 19609 bytes 1671290 jump ufw-after-output
+		counter packets 19609 bytes 1671290 jump ufw-after-logging-output
+		counter packets 19609 bytes 1671290 jump ufw-reject-output
+		counter packets 19609 bytes 1671290 jump ufw-track-output
+	}
+
+	chain FORWARD {
+		type filter hook forward priority filter; policy drop;
+		counter packets 0 bytes 0 jump ufw-before-logging-forward
+		counter packets 0 bytes 0 jump ufw-before-forward
+		counter packets 0 bytes 0 jump ufw-after-forward
+		counter packets 0 bytes 0 jump ufw-after-logging-forward
+		counter packets 0 bytes 0 jump ufw-reject-forward
+		counter packets 0 bytes 0 jump ufw-track-forward
+	}
+
+	chain ufw-logging-deny {
+		ct state invalid limit rate 3/minute burst 10 packets counter packets 51 bytes 15728 return
+		limit rate 3/minute burst 10 packets counter packets 0 bytes 0 log prefix "[UFW BLOCK] "
+	}
+
+	chain ufw-logging-allow {
+		limit rate 3/minute burst 10 packets counter packets 0 bytes 0 log prefix "[UFW ALLOW] "
+	}
+
+	chain ufw-skip-to-policy-input {
+		counter packets 291 bytes 14820 drop
+	}
+
+	chain ufw-skip-to-policy-output {
+		counter packets 0 bytes 0 accept
+	}
+
+	chain ufw-skip-to-policy-forward {
+		counter packets 0 bytes 0 drop
+	}
+
+	chain ufw-not-local {
+		fib daddr type local counter packets 74420 bytes 7679097 return
+		fib daddr type multicast counter packets 3 bytes 160 return
+		fib daddr type broadcast counter packets 0 bytes 0 return
+		limit rate 3/minute burst 10 packets counter packets 0 bytes 0 jump ufw-logging-deny
+		counter packets 0 bytes 0 drop
+	}
+
+	chain ufw-user-input {
+		ip saddr 172.64.0.0/13 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 104.24.0.0/14 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 104.16.0.0/13 tcp dport 80 counter packets 1 bytes 60 accept
+		ip saddr 162.158.0.0/15 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 198.41.128.0/17 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 197.234.240.0/22 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 188.114.96.0/20 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 190.93.240.0/20 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 108.162.192.0/18 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 141.101.64.0/18 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 103.31.4.0/22 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 103.22.200.0/22 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 103.21.244.0/22 tcp dport 80 counter packets 0 bytes 0 accept
+		ip saddr 173.245.48.0/20 tcp dport 80 counter packets 0 bytes 0 accept
+		tcp dport 5000 counter packets 3 bytes 172 drop
+		tcp dport 22 counter packets 441 bytes 25572 accept
+		tcp dport 22  counter packets 0 bytes 0 accept
+		udp dport 5000 counter packets 0 bytes 0 accept
+		ip protocol udp udp dport { 500, 4500 } counter packets 0 bytes 0 accept
+		tcp dport 3000 counter packets 31 bytes 1764 accept
+		tcp dport 80 counter packets 15 bytes 756 drop
+		tcp dport 443 counter packets 8 bytes 408 drop
+	}
+
+	chain ufw-user-output {
+	}
+
+	chain ufw-user-forward {
+	}
+
+	chain ufw-user-logging-input {
+	}
+
+	chain ufw-user-logging-output {
+	}
+
+	chain ufw-user-logging-forward {
+	}
+
+	chain ufw-user-limit {
+		limit rate 3/minute burst 5 packets counter packets 0 bytes 0 log prefix "[UFW LIMIT BLOCK] "
+		counter packets 0 bytes 0 reject
+	}
+
+	chain ufw-user-limit-accept {
+		counter packets 0 bytes 0 accept
+	}
+}
+table ip6 filter {
+	chain ufw6-before-logging-input {
+	}
+
+	chain ufw6-before-logging-output {
+	}
+
+	chain ufw6-before-logging-forward {
+	}
+
+	chain ufw6-before-input {
+		iifname "lo" counter packets 222703 bytes 314356163 accept
+		rt type 0 counter packets 0 bytes 0 drop
+		ct state related,established counter packets 44882 bytes 567075028 accept
+		meta l4proto ipv6-icmp icmpv6 type echo-reply counter packets 0 bytes 0 accept
+		ct state invalid counter packets 10 bytes 600 jump ufw6-logging-deny
+		ct state invalid counter packets 10 bytes 600 drop
+		meta l4proto ipv6-icmp icmpv6 type destination-unreachable counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type packet-too-big counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type time-exceeded counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type parameter-problem counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type echo-request counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type nd-router-solicit ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type nd-router-advert ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type nd-neighbor-solicit ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type nd-neighbor-advert ip6 hoplimit 255 counter packets 941 bytes 60232 accept
+		meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp icmpv6 type mld-listener-query counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp icmpv6 type mld-listener-report counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp icmpv6 type mld-listener-done counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp xt match "icmp6" counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 1 counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 1 counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 1 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 ip6 daddr fe80::/10 udp sport 547 udp dport 546 counter packets 0 bytes 0 accept
+		ip6 daddr ff02::fb udp dport 5353 counter packets 0 bytes 0 accept
+		ip6 daddr ff02::f udp dport 1900 counter packets 0 bytes 0 accept
+		counter packets 584 bytes 42476 jump ufw6-user-input
+	}
+
+	chain ufw6-before-output {
+		oifname "lo" counter packets 222703 bytes 314356163 accept
+		rt type 0 counter packets 0 bytes 0 drop
+		ct state related,established counter packets 31462 bytes 4330530 accept
+		meta l4proto ipv6-icmp icmpv6 type destination-unreachable counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type packet-too-big counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type time-exceeded counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type parameter-problem counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type echo-request counter packets 2 bytes 208 accept
+		meta l4proto ipv6-icmp icmpv6 type echo-reply counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type nd-router-solicit ip6 hoplimit 255 counter packets 287 bytes 14448 accept
+		meta l4proto ipv6-icmp icmpv6 type nd-neighbor-advert ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type nd-neighbor-solicit ip6 hoplimit 255 counter packets 943 bytes 67896 accept
+		meta l4proto ipv6-icmp icmpv6 type nd-router-advert ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp icmpv6 type mld-listener-query counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp icmpv6 type mld-listener-report counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp icmpv6 type mld-listener-done counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp xt match "icmp6" counter packets 138 bytes 10608 accept
+		meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 255 counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 1 counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 1 counter packets 0 bytes 0 accept
+		ip6 saddr fe80::/10 meta l4proto ipv6-icmp xt match "icmp6" ip6 hoplimit 1 counter packets 0 bytes 0 accept
+		counter packets 1777 bytes 143601 jump ufw6-user-output
+	}
+
+	chain ufw6-before-forward {
+		rt type 0 counter packets 0 bytes 0 drop
+		ct state related,established counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type destination-unreachable counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type packet-too-big counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type time-exceeded counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type parameter-problem counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type echo-request counter packets 0 bytes 0 accept
+		meta l4proto ipv6-icmp icmpv6 type echo-reply counter packets 0 bytes 0 accept
+		counter packets 0 bytes 0 jump ufw6-user-forward
+	}
+
+	chain ufw6-after-input {
+		udp dport 137 counter packets 0 bytes 0 jump ufw6-skip-to-policy-input
+		udp dport 138 counter packets 0 bytes 0 jump ufw6-skip-to-policy-input
+		tcp dport 139 counter packets 1 bytes 64 jump ufw6-skip-to-policy-input
+		tcp dport 445 counter packets 1 bytes 64 jump ufw6-skip-to-policy-input
+		udp dport 546 counter packets 0 bytes 0 jump ufw6-skip-to-policy-input
+		udp dport 547 counter packets 0 bytes 0 jump ufw6-skip-to-policy-input
+	}
+
+	chain ufw6-after-output {
+	}
+
+	chain ufw6-after-forward {
+	}
+
+	chain ufw6-after-logging-input {
+		limit rate 3/minute burst 10 packets counter packets 8 bytes 512 log prefix "[UFW BLOCK] "
+	}
+
+	chain ufw6-after-logging-output {
+	}
+
+	chain ufw6-after-logging-forward {
+		limit rate 3/minute burst 10 packets counter packets 0 bytes 0 log prefix "[UFW BLOCK] "
+	}
+
+	chain ufw6-reject-input {
+	}
+
+	chain ufw6-reject-output {
+	}
+
+	chain ufw6-reject-forward {
+	}
+
+	chain ufw6-track-input {
+	}
+
+	chain ufw6-track-output {
+		meta l4proto tcp ct state new counter packets 1593 bytes 127440 accept
+		meta l4proto udp ct state new counter packets 171 bytes 15173 accept
+	}
+
+	chain ufw6-track-forward {
+	}
+
+	chain INPUT {
+		type filter hook input priority filter; policy drop;
+		counter packets 269120 bytes 881534499 jump ufw6-before-logging-input
+		counter packets 269120 bytes 881534499 jump ufw6-before-input
+		counter packets 569 bytes 39172 jump ufw6-after-input
+		counter packets 567 bytes 39044 jump ufw6-after-logging-input
+		counter packets 567 bytes 39044 jump ufw6-reject-input
+		counter packets 567 bytes 39044 jump ufw6-track-input
+	}
+
+	chain OUTPUT {
+		type filter hook output priority filter; policy accept;
+		counter packets 257312 bytes 318923454 jump ufw6-before-logging-output
+		counter packets 257312 bytes 318923454 jump ufw6-before-output
+		counter packets 1777 bytes 143601 jump ufw6-after-output
+		counter packets 1777 bytes 143601 jump ufw6-after-logging-output
+		counter packets 1777 bytes 143601 jump ufw6-reject-output
+		counter packets 1777 bytes 143601 jump ufw6-track-output
+	}
+
+	chain FORWARD {
+		type filter hook forward priority filter; policy drop;
+		counter packets 0 bytes 0 jump ufw6-before-logging-forward
+		counter packets 0 bytes 0 jump ufw6-before-forward
+		counter packets 0 bytes 0 jump ufw6-after-forward
+		counter packets 0 bytes 0 jump ufw6-after-logging-forward
+		counter packets 0 bytes 0 jump ufw6-reject-forward
+		counter packets 0 bytes 0 jump ufw6-track-forward
+	}
+
+	chain ufw6-logging-deny {
+		ct state invalid limit rate 3/minute burst 10 packets counter packets 0 bytes 0 return
+		limit rate 3/minute burst 10 packets counter packets 0 bytes 0 log prefix "[UFW BLOCK] "
+	}
+
+	chain ufw6-logging-allow {
+		limit rate 3/minute burst 10 packets counter packets 0 bytes 0 log prefix "[UFW ALLOW] "
+	}
+
+	chain ufw6-skip-to-policy-input {
+		counter packets 2 bytes 128 drop
+	}
+
+	chain ufw6-skip-to-policy-output {
+		counter packets 0 bytes 0 accept
+	}
+
+	chain ufw6-skip-to-policy-forward {
+		counter packets 0 bytes 0 drop
+	}
+
+	chain ufw6-user-input {
+		ip6 saddr 2a06:98c0::/29 tcp dport 80 counter packets 0 bytes 0 accept
+		ip6 saddr 2405:8100::/32 tcp dport 80 counter packets 0 bytes 0 accept
+		ip6 saddr 2405:b500::/32 tcp dport 80 counter packets 0 bytes 0 accept
+		ip6 saddr 2803:f800::/32 tcp dport 80 counter packets 0 bytes 0 accept
+		ip6 saddr 2606:4700::/32 tcp dport 80 counter packets 0 bytes 0 accept
+		ip6 saddr 2400:cb00::/32 tcp dport 80 counter packets 0 bytes 0 accept
+		tcp dport 5000 counter packets 0 bytes 0 drop
+		tcp dport 22 counter packets 0 bytes 0 accept
+		tcp dport 22  counter packets 0 bytes 0 accept
+		udp dport 5000 counter packets 0 bytes 0 accept
+		meta l4proto udp udp dport { 500, 4500 } counter packets 0 bytes 0 accept
+		tcp dport 3000 counter packets 0 bytes 0 accept
+		tcp dport 80 counter packets 0 bytes 0 drop
+		tcp dport 443 counter packets 0 bytes 0 drop
+	}
+
+	chain ufw6-user-output {
+	}
+
+	chain ufw6-user-forward {
+	}
+
+	chain ufw6-user-logging-input {
+	}
+
+	chain ufw6-user-logging-output {
+	}
+
+	chain ufw6-user-logging-forward {
+	}
+
+	chain ufw6-user-limit {
+		limit rate 3/minute burst 5 packets counter packets 0 bytes 0 log prefix "[UFW LIMIT BLOCK] "
+		counter packets 0 bytes 0 reject
+	}
+
+	chain ufw6-user-limit-accept {
+		counter packets 0 bytes 0 accept
+	}
+}
+table ip nat {
+	chain POSTROUTING {
+		type nat hook postrouting priority srcnat; policy accept;
+		ip saddr 10.8.0.0/24 oifname "eth0" counter packets 0 bytes 0 masquerade
+	}
+}
+table ip6 nat {
+	chain POSTROUTING {
+		type nat hook postrouting priority srcnat; policy accept;
+		ip6 saddr fd00:0:0:8::/64 oifname "eth0" counter packets 0 bytes 0 masquerade
+	}
+}
+
+# --- ufw status numbered ---
+Status: active
+
+     To                         Action      From
+     --                         ------      ----
+[ 1] 80/tcp                     ALLOW IN    172.64.0.0/13              # CF-80
+[ 2] 80/tcp                     ALLOW IN    104.24.0.0/14              # CF-80
+[ 3] 80/tcp                     ALLOW IN    104.16.0.0/13              # CF-80
+[ 4] 80/tcp                     ALLOW IN    162.158.0.0/15             # CF-80
+[ 5] 80/tcp                     ALLOW IN    198.41.128.0/17            # CF-80
+[ 6] 80/tcp                     ALLOW IN    197.234.240.0/22           # CF-80
+[ 7] 80/tcp                     ALLOW IN    188.114.96.0/20            # CF-80
+[ 8] 80/tcp                     ALLOW IN    190.93.240.0/20            # CF-80
+[ 9] 80/tcp                     ALLOW IN    108.162.192.0/18           # CF-80
+[10] 80/tcp                     ALLOW IN    141.101.64.0/18            # CF-80
+[11] 80/tcp                     ALLOW IN    103.31.4.0/22              # CF-80
+[12] 80/tcp                     ALLOW IN    103.22.200.0/22            # CF-80
+[13] 80/tcp                     ALLOW IN    103.21.244.0/22            # CF-80
+[14] 80/tcp                     ALLOW IN    173.245.48.0/20            # CF-80
+[15] 5000/tcp                   DENY IN     Anywhere                  
+[16] 22/tcp                     ALLOW IN    Anywhere                   # SSH доступ
+[17] OpenSSH                    ALLOW IN    Anywhere                  
+[18] 5000/udp                   ALLOW IN    Anywhere                   # TUN gateway UDP
+[19] 500,4500/udp               ALLOW IN    Anywhere                   # IPsec VPN (strongSwan)
+[20] 3000/tcp                   ALLOW IN    Anywhere                   # Grafana Web UI
+[21] 80/tcp                     DENY IN     Anywhere                  
+[22] 443/tcp                    DENY IN     Anywhere                  
+[23] 80/tcp                     ALLOW IN    2a06:98c0::/29             # CF-80
+[24] 80/tcp                     ALLOW IN    2405:8100::/32             # CF-80
+[25] 80/tcp                     ALLOW IN    2405:b500::/32             # CF-80
+[26] 80/tcp                     ALLOW IN    2803:f800::/32             # CF-80
+[27] 80/tcp                     ALLOW IN    2606:4700::/32             # CF-80
+[28] 80/tcp                     ALLOW IN    2400:cb00::/32             # CF-80
+[29] 5000/tcp (v6)              DENY IN     Anywhere (v6)             
+[30] 22/tcp (v6)                ALLOW IN    Anywhere (v6)              # SSH доступ
+[31] OpenSSH (v6)               ALLOW IN    Anywhere (v6)             
+[32] 5000/udp (v6)              ALLOW IN    Anywhere (v6)              # TUN gateway UDP
+[33] 500,4500/udp (v6)          ALLOW IN    Anywhere (v6)              # IPsec VPN (strongSwan)
+[34] 3000/tcp (v6)              ALLOW IN    Anywhere (v6)              # Grafana Web UI
+[35] 80/tcp (v6)                DENY IN     Anywhere (v6)             
+[36] 443/tcp (v6)               DENY IN     Anywhere (v6)             
+
+
+# --- listen 80/5001/5000 ---
+LISTEN 0      1024                          127.0.0.1:5001       0.0.0.0:*    users:(("websocat",pid=297748,fd=6))                                                 
+LISTEN 0      128                             0.0.0.0:5000       0.0.0.0:*    users:(("python",pid=318238,fd=5))                                                   
+LISTEN 0      511                             0.0.0.0:80         0.0.0.0:*    users:(("nginx",pid=299623,fd=5),("nginx",pid=299622,fd=5),("nginx",pid=288527,fd=5))
+LISTEN 0      511                                [::]:80            [::]:*    users:(("nginx",pid=299623,fd=6),("nginx",pid=299622,fd=6),("nginx",pid=288527,fd=6))
+
+# --- websocat --version ---
+websocat 1.13.0
+
+# --- /var/log/ufw.log tail ---
+2025-08-10T13:33:41.545310+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=80.75.212.17 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=246 ID=54321 PROTO=TCP SPT=40178 DPT=3129 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:34:16.095158+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=65.49.1.143 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=239 ID=54321 PROTO=TCP SPT=50251 DPT=6080 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:34:24.756861+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=83.222.190.246 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=31685 PROTO=TCP SPT=42144 DPT=6666 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:35:01.168717+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=196.251.117.173 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=244 ID=63846 PROTO=TCP SPT=47899 DPT=5678 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:35:04.237549+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.180.49.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x40 TTL=245 ID=20104 PROTO=TCP SPT=55799 DPT=8011 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:35:17.120140+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=80.75.212.83 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=54321 PROTO=TCP SPT=54038 DPT=8090 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:35:43.951487+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.187.179.223 DST=46.62.133.47 LEN=92 TOS=0x00 PREC=0x00 TTL=47 ID=32539 DF PROTO=UDP SPT=41430 DPT=17185 LEN=72 
+2025-08-10T13:36:08.275596+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=147.185.132.145 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=49833 DPT=10088 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:36:25.339215+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=35.203.211.80 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=56645 DPT=47981 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:36:38.891334+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=147.185.132.41 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=56946 DPT=49407 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:36:59.295077+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=23.95.191.196 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=237 ID=198 PROTO=TCP SPT=43123 DPT=3384 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:37:23.755159+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:86:dd SRC=2a06:4880:6000:0000:0000:0000:0000:006e DST=2a01:04f9:c013:05d3:0000:0000:0000:0001 LEN=64 TC=0 HOPLIMIT=242 FLOWLBL=320368 PROTO=TCP SPT=49861 DPT=161 WINDOW=14600 RES=0x00 SYN URGP=0 
+2025-08-10T13:37:33.959791+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=83.222.191.42 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=243 ID=55692 PROTO=TCP SPT=61000 DPT=26492 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:37:45.785871+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=68.183.88.119 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=242 ID=24812 PROTO=TCP SPT=44403 DPT=135 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:38:01.350842+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=184.105.247.247 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=239 ID=54321 PROTO=TCP SPT=34296 DPT=8020 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:38:20.136299+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=206.168.34.128 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=50 ID=27040 PROTO=TCP SPT=21478 DPT=53680 WINDOW=42340 RES=0x00 SYN URGP=0 
+2025-08-10T13:38:48.380387+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=162.216.150.209 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=53613 DPT=12082 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:39:03.031768+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=89.248.163.240 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=245 ID=24540 PROTO=TCP SPT=52731 DPT=31443 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:39:21.186354+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=104.234.115.242 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=57 ID=24474 PROTO=TCP SPT=21505 DPT=50000 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:39:39.612655+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=103.245.237.21 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=243 ID=60174 PROTO=TCP SPT=49098 DPT=3390 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:40:00.657339+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=116.103.228.55 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=239 ID=26283 PROTO=TCP SPT=44589 DPT=8910 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:40:22.662761+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=89.248.165.85 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=245 ID=64821 PROTO=TCP SPT=43899 DPT=3388 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:41:07.218084+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=206.123.145.35 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=61644 PROTO=TCP SPT=50777 DPT=10010 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:41:10.567132+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=45.153.34.139 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=245 ID=54321 PROTO=TCP SPT=33538 DPT=34567 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:41:27.559516+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=172.104.241.98 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=51 ID=21785 DF PROTO=TCP SPT=48634 DPT=4786 WINDOW=64240 RES=0x00 SYN URGP=0 
+2025-08-10T13:41:37.560492+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=172.104.241.98 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=51 ID=40184 DF PROTO=TCP SPT=44580 DPT=514 WINDOW=64240 RES=0x00 SYN URGP=0 
+2025-08-10T13:41:57.170392+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=172.104.241.98 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=51 ID=26899 DF PROTO=TCP SPT=56750 DPT=5006 WINDOW=64240 RES=0x00 SYN URGP=0 
+2025-08-10T13:42:17.170531+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=172.104.241.98 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=51 ID=31162 DF PROTO=TCP SPT=33064 DPT=9100 WINDOW=64240 RES=0x00 SYN URGP=0 
+2025-08-10T13:42:37.235051+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=172.104.241.98 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=51 ID=15467 DF PROTO=TCP SPT=58080 DPT=995 WINDOW=64240 RES=0x00 SYN URGP=0 
+2025-08-10T13:43:14.088880+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=20.168.7.129 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=235 ID=54321 PROTO=TCP SPT=51069 DPT=4118 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:43:20.705115+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=206.123.145.35 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=51217 PROTO=TCP SPT=50777 DPT=9090 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:43:51.618030+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=104.234.115.242 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=57 ID=59685 PROTO=TCP SPT=21505 DPT=22280 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:44:00.165238+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=83.222.190.246 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=48671 PROTO=TCP SPT=42144 DPT=24000 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:44:28.935616+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=86.104.46.118 DST=46.62.133.47 LEN=7528 TOS=0x00 PREC=0x00 TTL=49 ID=28071 PROTO=UDP SPT=49272 DPT=25095 LEN=7508 
+2025-08-10T13:44:46.587623+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=172.104.241.98 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=44 ID=19714 PROTO=ICMP TYPE=13 CODE=0 
+2025-08-10T13:45:06.938949+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=104.234.115.242 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=57 ID=63033 PROTO=TCP SPT=21505 DPT=17001 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:45:44.657215+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:86:dd SRC=2a06:4880:6000:0000:0000:0000:0000:0088 DST=2a01:04f9:c013:05d3:0000:0000:0000:0001 LEN=64 TC=0 HOPLIMIT=241 FLOWLBL=657285 PROTO=TCP SPT=37624 DPT=4060 WINDOW=14600 RES=0x00 SYN URGP=0 
+2025-08-10T13:45:57.101006+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=203.55.131.5 DST=46.62.133.47 LEN=52 TOS=0x00 PREC=0x00 TTL=51 ID=27982 PROTO=TCP SPT=42049 DPT=10000 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:46:00.097378+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=52.15.85.154 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=237 ID=54321 PROTO=TCP SPT=47354 DPT=2078 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:46:08.335053+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=47.250.81.85 DST=46.62.133.47 LEN=52 TOS=0x14 PREC=0x00 TTL=50 ID=35372 DF PROTO=TCP SPT=36396 DPT=8848 WINDOW=61690 RES=0x00 SYN URGP=0 
+2025-08-10T13:46:28.827696+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=80.75.212.17 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=246 ID=54321 PROTO=TCP SPT=43089 DPT=3127 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:46:59.655019+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.180.49.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x40 TTL=245 ID=23454 PROTO=TCP SPT=55799 DPT=8405 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:47:04.932492+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=5.182.209.113 DST=46.62.133.47 LEN=34 TOS=0x00 PREC=0x00 TTL=245 ID=58043 PROTO=UDP SPT=443 DPT=5093 LEN=14 
+2025-08-10T13:47:19.824253+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=137.184.170.47 DST=46.62.133.47 LEN=44 TOS=0x08 PREC=0x00 TTL=237 ID=8291 PROTO=TCP SPT=61007 DPT=4000 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:47:52.295338+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=54.82.214.168 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=237 ID=54321 PROTO=TCP SPT=57701 DPT=5632 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:48:01.355299+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=83.222.191.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=243 ID=9193 PROTO=TCP SPT=50782 DPT=8002 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:48:21.343066+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:86:dd SRC=2a06:4880:6000:0000:0000:0000:0000:008b DST=2a01:04f9:c013:05d3:0000:0000:0000:0001 LEN=64 TC=0 HOPLIMIT=240 FLOWLBL=304386 PROTO=TCP SPT=53930 DPT=5060 WINDOW=14600 RES=0x00 SYN URGP=0 
+2025-08-10T13:48:39.363263+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=142.93.154.117 DST=46.62.133.47 LEN=44 TOS=0x08 PREC=0x00 TTL=237 ID=21154 PROTO=TCP SPT=61004 DPT=8081 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:49:26.609952+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=46.8.112.21 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=242 ID=48826 PROTO=TCP SPT=58914 DPT=10617 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:49:38.275888+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=162.216.150.209 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=55903 DPT=50807 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:49:42.953527+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=45.142.154.10 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=235 ID=18780 PROTO=TCP SPT=58914 DPT=8443 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:49:50.934319+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=147.185.133.202 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=51531 DPT=45544 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:50:02.949606+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=45.95.147.247 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=55 ID=1 DF PROTO=TCP SPT=61000 DPT=25565 WINDOW=30000 RES=0x00 SYN URGP=0 
+2025-08-10T13:50:19.229467+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=79.124.62.230 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=16149 PROTO=TCP SPT=51540 DPT=3389 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:50:39.328768+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=193.163.125.159 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=244 ID=56860 PROTO=TCP SPT=33643 DPT=58877 WINDOW=14600 RES=0x00 SYN URGP=0 
+2025-08-10T13:51:00.508279+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=35.203.210.112 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=52640 DPT=50203 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:51:21.953747+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=20.55.35.217 DST=46.62.133.47 LEN=52 TOS=0x00 PREC=0x00 TTL=46 ID=32330 PROTO=TCP SPT=43610 DPT=7002 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:51:37.978934+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=45.95.147.247 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=55 ID=1 DF PROTO=TCP SPT=61000 DPT=25565 WINDOW=30000 RES=0x00 SYN URGP=0 
+2025-08-10T13:52:13.514212+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=95.216.134.168 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=64 ID=9590 DF PROTO=TCP SPT=37814 DPT=30333 WINDOW=42340 RES=0x00 SYN URGP=0 
+2025-08-10T13:52:29.786575+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=86.104.46.70 DST=46.62.133.47 LEN=21028 TOS=0x00 PREC=0x00 TTL=49 ID=6203 PROTO=UDP SPT=40564 DPT=24198 LEN=21008 
+2025-08-10T13:52:45.633271+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=206.123.145.35 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=19480 PROTO=TCP SPT=50777 DPT=3129 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:53:12.737762+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=65.49.1.113 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=239 ID=54321 PROTO=TCP SPT=44012 DPT=10443 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:53:43.152314+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=206.123.145.35 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=3938 PROTO=TCP SPT=50777 DPT=64992 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:54:01.146497+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=200.14.71.171 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=41 ID=2712 PROTO=TCP SPT=29714 DPT=23 WINDOW=26114 RES=0x00 SYN URGP=0 
+2025-08-10T13:54:13.015088+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=196.251.91.49 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=242 ID=24632 PROTO=TCP SPT=53936 DPT=3306 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:54:17.918040+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=79.124.62.230 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=14101 PROTO=TCP SPT=51556 DPT=57412 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:55:17.868875+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=116.103.228.55 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=239 ID=30571 PROTO=TCP SPT=44589 DPT=9309 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:55:23.488695+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=162.216.149.51 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=55351 DPT=24172 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:55:36.827943+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=176.65.148.227 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=245 ID=54321 PROTO=TCP SPT=48510 DPT=61616 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:55:43.923636+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=209.38.84.159 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=233 ID=54321 PROTO=TCP SPT=34978 DPT=8000 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:56:17.583930+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=20.221.68.159 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=233 ID=54321 PROTO=TCP SPT=57326 DPT=1212 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:56:27.040423+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.180.49.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x40 TTL=245 ID=7475 PROTO=TCP SPT=55799 DPT=8408 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:56:32.060559+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:86:dd SRC=2a06:4880:6000:0000:0000:0000:0000:0083 DST=2a01:04f9:c013:05d3:0000:0000:0000:0001 LEN=64 TC=0 HOPLIMIT=242 FLOWLBL=176019 PROTO=TCP SPT=39353 DPT=2375 WINDOW=14600 RES=0x00 SYN URGP=0 
+2025-08-10T13:57:21.297176+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=45.95.147.247 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=55 ID=1 DF PROTO=TCP SPT=61000 DPT=25565 WINDOW=30000 RES=0x00 SYN URGP=0 
+2025-08-10T13:57:23.859841+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.180.49.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x40 TTL=245 ID=5452 PROTO=TCP SPT=55799 DPT=8329 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T13:57:40.729438+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=115.231.78.14 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=109 ID=0 PROTO=TCP SPT=15312 DPT=44818 WINDOW=29200 RES=0x00 SYN URGP=0 
+2025-08-10T13:57:43.598191+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=65.49.1.217 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=239 ID=54321 PROTO=TCP SPT=45958 DPT=5986 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:58:03.596692+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=162.216.149.210 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=53418 DPT=49276 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:58:20.073007+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=192.210.172.46 DST=46.62.133.47 LEN=433 TOS=0x00 PREC=0x00 TTL=45 ID=5401 DF PROTO=UDP SPT=5614 DPT=5603 LEN=413 
+2025-08-10T13:58:24.310497+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:86:dd SRC=2a06:4880:6000:0000:0000:0000:0000:0082 DST=2a01:04f9:c013:05d3:0000:0000:0000:0001 LEN=64 TC=0 HOPLIMIT=241 FLOWLBL=643987 PROTO=TCP SPT=58994 DPT=49666 WINDOW=14600 RES=0x00 SYN URGP=0 
+2025-08-10T13:58:43.292820+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=162.216.150.83 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=248 ID=54321 PROTO=TCP SPT=54745 DPT=49577 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T13:59:12.986722+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=79.124.62.230 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=1073 PROTO=TCP SPT=54106 DPT=55576 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:59:32.290568+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=83.222.190.246 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=30505 PROTO=TCP SPT=42128 DPT=5555 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T13:59:52.232847+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=89.248.165.82 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=245 ID=5791 PROTO=TCP SPT=52779 DPT=8084 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T14:00:26.745791+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=45.95.147.247 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=55 ID=1 DF PROTO=TCP SPT=61000 DPT=25565 WINDOW=30000 RES=0x00 SYN URGP=0 
+2025-08-10T14:00:49.170909+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.180.49.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x40 TTL=245 ID=48144 PROTO=TCP SPT=55799 DPT=8107 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T14:00:58.430812+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=83.222.190.242 DST=46.62.133.47 LEN=44 TOS=0x00 PREC=0x00 TTL=243 ID=31162 PROTO=TCP SPT=44199 DPT=33937 WINDOW=1025 RES=0x00 SYN URGP=0 
+2025-08-10T14:01:12.106906+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.180.49.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x40 TTL=245 ID=54916 PROTO=TCP SPT=55799 DPT=8550 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T14:01:17.362875+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=103.203.57.15 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=242 ID=54321 PROTO=TCP SPT=49873 DPT=23 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T14:01:53.469681+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=65.49.1.41 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=239 ID=54321 PROTO=TCP SPT=36777 DPT=83 WINDOW=65535 RES=0x00 SYN URGP=0 
+2025-08-10T14:02:05.884718+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.180.49.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x40 TTL=245 ID=19136 PROTO=TCP SPT=55799 DPT=8059 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T14:02:28.323190+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=23.94.30.66 DST=46.62.133.47 LEN=436 TOS=0x00 PREC=0x00 TTL=46 ID=30132 DF PROTO=UDP SPT=5552 DPT=5402 LEN=416 
+2025-08-10T14:02:37.118064+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:86:dd SRC=2a06:4880:6000:0000:0000:0000:0000:007a DST=2a01:04f9:c013:05d3:0000:0000:0000:0001 LEN=64 TC=0 HOPLIMIT=241 FLOWLBL=118885 PROTO=TCP SPT=53874 DPT=8886 WINDOW=14600 RES=0x00 SYN URGP=0 
+2025-08-10T14:02:41.272098+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=167.94.145.19 DST=46.62.133.47 LEN=60 TOS=0x00 PREC=0x00 TTL=53 ID=39651 PROTO=TCP SPT=56553 DPT=20256 WINDOW=42340 RES=0x00 SYN URGP=0 
+2025-08-10T14:03:15.132305+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=194.180.49.130 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x40 TTL=245 ID=33591 PROTO=TCP SPT=55799 DPT=8920 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T14:03:19.595553+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=95.105.53.116 DST=46.62.133.47 LEN=52 TOS=0x02 PREC=0x00 TTL=115 ID=40267 DF PROTO=TCP SPT=62902 DPT=6666 WINDOW=64240 RES=0x00 CWR ECE SYN URGP=0 
+2025-08-10T14:03:21.495088+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:86:dd SRC=2a06:4880:6000:0000:0000:0000:0000:0076 DST=2a01:04f9:c013:05d3:0000:0000:0000:0001 LEN=64 TC=0 HOPLIMIT=241 FLOWLBL=315637 PROTO=TCP SPT=46815 DPT=9000 WINDOW=14600 RES=0x00 SYN URGP=0 
+2025-08-10T14:03:44.792722+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=206.123.145.35 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=12213 PROTO=TCP SPT=50777 DPT=9191 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T14:04:09.200513+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=206.123.145.35 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=247 ID=37804 PROTO=TCP SPT=50777 DPT=3122 WINDOW=1024 RES=0x00 SYN URGP=0 
+2025-08-10T14:04:21.604942+00:00 ubuntu-4gb-hel1-2 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=96:00:04:64:d8:5e:d2:74:7f:6e:37:e3:08:00 SRC=18.217.194.148 DST=46.62.133.47 LEN=40 TOS=0x00 PREC=0x00 TTL=237 ID=54321 PROTO=TCP SPT=33460 DPT=24003 WINDOW=65535 RES=0x00 SYN URGP=0 
+
+# --- systemd timers ---
+NEXT                            LEFT LAST                              PASSED UNIT                           ACTIVATES
+Sun 2025-08-10 14:07:06 UTC 2min 43s Sun 2025-08-10 14:02:06 UTC 2min 16s ago socks5-healthcheck.timer       socks5-healthcheck.service
+Sun 2025-08-10 14:10:00 UTC     5min Sun 2025-08-10 14:00:01 UTC 4min 21s ago sysstat-collect.timer          sysstat-collect.service
+Sun 2025-08-10 14:28:12 UTC    23min Sun 2025-08-10 13:28:12 UTC    36min ago git-autopush.timer             git-autopush.service
+Sun 2025-08-10 15:04:08 UTC    59min Sun 2025-08-10 03:31:05 UTC      10h ago certbot.timer                  certbot.service
+Sun 2025-08-10 20:24:31 UTC       6h Sun 2025-08-10 03:02:59 UTC      11h ago motd-news.timer                motd-news.service
+Sun 2025-08-10 21:01:10 UTC       6h Sun 2025-08-10 09:13:42 UTC 4h 50min ago apt-daily.timer                apt-daily.service
+Mon 2025-08-11 00:00:00 UTC       9h Sun 2025-08-10 00:00:01 UTC      14h ago dpkg-db-backup.timer           dpkg-db-backup.service
+Mon 2025-08-11 00:00:00 UTC       9h Sun 2025-08-10 00:00:01 UTC      14h ago logrotate.timer                logrotate.service
+Mon 2025-08-11 00:07:00 UTC      10h Sun 2025-08-10 00:07:01 UTC      13h ago sysstat-summary.timer          sysstat-summary.service
+Mon 2025-08-11 00:30:49 UTC      10h Mon 2025-08-04 01:39:40 UTC            - fstrim.timer                   fstrim.service
+Mon 2025-08-11 03:19:54 UTC      13h Sun 2025-08-10 03:31:05 UTC      10h ago man-db.timer                   man-db.service
+Mon 2025-08-11 03:38:24 UTC      13h Sun 2025-08-10 03:31:00 UTC      10h ago socks5tun-update.timer         socks5tun-update.service
+Mon 2025-08-11 06:44:03 UTC      16h Sun 2025-08-10 06:59:15 UTC       7h ago apt-daily-upgrade.timer        apt-daily-upgrade.service
+Mon 2025-08-11 11:57:01 UTC      21h Sun 2025-08-10 11:57:01 UTC  2h 7min ago update-notifier-download.timer update-notifier-download.service
+Mon 2025-08-11 12:07:09 UTC      22h Sun 2025-08-10 12:07:09 UTC 1h 57min ago etckeeper.timer                etckeeper.service
+Mon 2025-08-11 12:07:09 UTC      22h Sun 2025-08-10 12:07:09 UTC 1h 57min ago systemd-tmpfiles-clean.timer   systemd-tmpfiles-clean.service
+Sat 2025-08-16 17:33:19 UTC   6 days Mon 2025-08-04 00:57:37 UTC            - update-notifier-motd.timer     update-notifier-motd.service
+Sun 2025-08-17 03:10:28 UTC   6 days Sun 2025-08-10 03:11:01 UTC      10h ago e2scrub_all.timer              e2scrub_all.service
+Sun 2025-08-17 05:00:00 UTC   6 days Sun 2025-08-10 05:00:00 UTC       9h ago xray-update.timer              xray-update.service
+-                                  - -                                      - apport-autoreport.timer        apport-autoreport.service
+-                                  - -                                      - snapd.snap-repair.timer        snapd.snap-repair.service
+-                                  - -                                      - ua-timer.timer                 ua-timer.service
+
+22 timers listed.
+
+# --- systemctl running ---
+  UNIT                        LOAD   ACTIVE SUB     DESCRIPTION
+  atd.service                 loaded active running Deferred execution scheduler
+  blackbox_exporter.service   loaded active running Blackbox Exporter
+  cron.service                loaded active running Regular background program processing daemon
+  dbus.service                loaded active running D-Bus System Message Bus
+  getty@tty1.service          loaded active running Getty on tty1
+  grafana-server.service      loaded active running Grafana instance
+  multipathd.service          loaded active running Device-Mapper Multipath Device Controller
+  named.service               loaded active running BIND Domain Name Server
+  nginx.service               loaded active running A high performance web server and a reverse proxy server
+  node_exporter.service       loaded active running Node Exporter
+  polkit.service              loaded active running Authorization Manager
+  prometheus.service          loaded active running Prometheus Monitoring
+  qemu-guest-agent.service    loaded active running QEMU Guest Agent
+  rsyslog.service             loaded active running System Logging Service
+  serial-getty@ttyS0.service  loaded active running Serial Getty on ttyS0
+  snapd.service               loaded active running Snap Daemon
+  socks5tun.service           loaded active running SOCKS5TUN proxy server
+  ssh.service                 loaded active running OpenBSD Secure Shell server
+  strongswan.service          loaded active running strongSwan IPsec IKEv1/IKEv2 daemon using swanctl
+  stunnel.service             loaded active running TLS wrapper for SOCKS5TUN
+  systemd-journald.service    loaded active running Journal Service
+  systemd-logind.service      loaded active running User Login Management
+  systemd-networkd.service    loaded active running Network Configuration
+  systemd-resolved.service    loaded active running Network Name Resolution
+  systemd-timesyncd.service   loaded active running Network Time Synchronization
+  systemd-udevd.service       loaded active running Rule-based Manager for Device Events and Files
+  unattended-upgrades.service loaded active running Unattended Upgrades Shutdown
+  user@0.service              loaded active running User Manager for UID 0
+  ws-bridge.service           loaded active running WebSocket <-> TCP bridge (websocat)
+
+Legend: LOAD   → Reflects whether the unit definition was properly loaded.
+        ACTIVE → The high-level unit activation state, i.e. generalization of SUB.
+        SUB    → The low-level unit activation state, values depend on unit type.
+
+29 loaded units listed.
+
+# --- ss -tunlp ---
+Netid State  Recv-Q Send-Q                    Local Address:Port  Peer Address:PortProcess                                                                               
+udp   UNCONN 0      0                              10.8.0.1:53         0.0.0.0:*    users:(("named",pid=829,fd=54))                                                      
+udp   UNCONN 0      0                              10.8.0.1:53         0.0.0.0:*    users:(("named",pid=829,fd=55))                                                      
+udp   UNCONN 0      0                            127.0.0.54:53         0.0.0.0:*    users:(("systemd-resolve",pid=2761,fd=16))                                           
+udp   UNCONN 0      0                         127.0.0.53%lo:53         0.0.0.0:*    users:(("systemd-resolve",pid=2761,fd=14))                                           
+udp   UNCONN 0      0                          46.62.133.47:53         0.0.0.0:*    users:(("named",pid=829,fd=34))                                                      
+udp   UNCONN 0      0                          46.62.133.47:53         0.0.0.0:*    users:(("named",pid=829,fd=35))                                                      
+udp   UNCONN 0      0                             127.0.0.1:53         0.0.0.0:*    users:(("named",pid=829,fd=29))                                                      
+udp   UNCONN 0      0                             127.0.0.1:53         0.0.0.0:*    users:(("named",pid=829,fd=28))                                                      
+udp   UNCONN 0      0                     46.62.133.47%eth0:68         0.0.0.0:*    users:(("systemd-network",pid=771,fd=22))                                            
+udp   UNCONN 0      0                               0.0.0.0:68         0.0.0.0:*    users:(("charon-systemd",pid=838,fd=26))                                             
+udp   UNCONN 0      0                               0.0.0.0:4500       0.0.0.0:*    users:(("charon-systemd",pid=838,fd=19))                                             
+udp   UNCONN 0      0                               0.0.0.0:500        0.0.0.0:*    users:(("charon-systemd",pid=838,fd=18))                                             
+udp   UNCONN 0      0                                 [::1]:53            [::]:*    users:(("named",pid=829,fd=38))                                                      
+udp   UNCONN 0      0                                 [::1]:53            [::]:*    users:(("named",pid=829,fd=39))                                                      
+udp   UNCONN 0      0                [2a01:4f9:c013:5d3::1]:53            [::]:*    users:(("named",pid=829,fd=42))                                                      
+udp   UNCONN 0      0                [2a01:4f9:c013:5d3::1]:53            [::]:*    users:(("named",pid=829,fd=43))                                                      
+udp   UNCONN 0      0       [fe80::9400:4ff:fe64:d85e]%eth0:53            [::]:*    users:(("named",pid=829,fd=47))                                                      
+udp   UNCONN 0      0       [fe80::9400:4ff:fe64:d85e]%eth0:53            [::]:*    users:(("named",pid=829,fd=46))                                                      
+udp   UNCONN 0      0      [fe80::4d6a:6a39:d25b:c49a]%tun0:53            [::]:*    users:(("named",pid=829,fd=60))                                                      
+udp   UNCONN 0      0      [fe80::4d6a:6a39:d25b:c49a]%tun0:53            [::]:*    users:(("named",pid=829,fd=59))                                                      
+udp   UNCONN 0      0                       [fd00:0:0:8::1]:53            [::]:*    users:(("named",pid=829,fd=64))                                                      
+udp   UNCONN 0      0                       [fd00:0:0:8::1]:53            [::]:*    users:(("named",pid=829,fd=63))                                                      
+udp   UNCONN 0      0                                  [::]:4500          [::]:*    users:(("charon-systemd",pid=838,fd=17))                                             
+udp   UNCONN 0      0                                  [::]:500           [::]:*    users:(("charon-systemd",pid=838,fd=16))                                             
+udp   UNCONN 0      0                                     *:5000             *:*    users:(("python",pid=318238,fd=4))                                                   
+tcp   LISTEN 0      10                            127.0.0.1:53         0.0.0.0:*    users:(("named",pid=829,fd=32))                                                      
+tcp   LISTEN 0      10                            127.0.0.1:53         0.0.0.0:*    users:(("named",pid=829,fd=30))                                                      
+tcp   LISTEN 0      1024                          127.0.0.1:36937      0.0.0.0:*    users:(("code-c306e94f98",pid=212771,fd=11))                                         
+tcp   LISTEN 0      1024                          127.0.0.1:45125      0.0.0.0:*    users:(("code-c306e94f98",pid=213596,fd=9))                                          
+tcp   LISTEN 0      5                             127.0.0.1:953        0.0.0.0:*    users:(("named",pid=829,fd=51))                                                      
+tcp   LISTEN 0      5                             127.0.0.1:953        0.0.0.0:*    users:(("named",pid=829,fd=50))                                                      
+tcp   LISTEN 0      1024                          127.0.0.1:5001       0.0.0.0:*    users:(("websocat",pid=297748,fd=6))                                                 
+tcp   LISTEN 0      10                         46.62.133.47:53         0.0.0.0:*    users:(("named",pid=829,fd=37))                                                      
+tcp   LISTEN 0      10                         46.62.133.47:53         0.0.0.0:*    users:(("named",pid=829,fd=36))                                                      
+tcp   LISTEN 0      4096                          127.0.0.1:11443      0.0.0.0:*    users:(("stunnel",pid=312292,fd=9))                                                  
+tcp   LISTEN 0      4096                         127.0.0.54:53         0.0.0.0:*    users:(("systemd-resolve",pid=2761,fd=17))                                           
+tcp   LISTEN 0      128                             0.0.0.0:5000       0.0.0.0:*    users:(("python",pid=318238,fd=5))                                                   
+tcp   LISTEN 0      4096                      127.0.0.53%lo:53         0.0.0.0:*    users:(("systemd-resolve",pid=2761,fd=15))                                           
+tcp   LISTEN 0      4096                            0.0.0.0:22         0.0.0.0:*    users:(("sshd",pid=119318,fd=3),("systemd",pid=1,fd=249))                            
+tcp   LISTEN 0      10                             10.8.0.1:53         0.0.0.0:*    users:(("named",pid=829,fd=58))                                                      
+tcp   LISTEN 0      10                             10.8.0.1:53         0.0.0.0:*    users:(("named",pid=829,fd=56))                                                      
+tcp   LISTEN 0      511                             0.0.0.0:80         0.0.0.0:*    users:(("nginx",pid=299623,fd=5),("nginx",pid=299622,fd=5),("nginx",pid=288527,fd=5))
+tcp   LISTEN 0      5                                 [::1]:953           [::]:*    users:(("named",pid=829,fd=53))                                                      
+tcp   LISTEN 0      5                                 [::1]:953           [::]:*    users:(("named",pid=829,fd=52))                                                      
+tcp   LISTEN 0      10     [fe80::4d6a:6a39:d25b:c49a]%tun0:53            [::]:*    users:(("named",pid=829,fd=62))                                                      
+tcp   LISTEN 0      10     [fe80::4d6a:6a39:d25b:c49a]%tun0:53            [::]:*    users:(("named",pid=829,fd=61))                                                      
+tcp   LISTEN 0      511                                   *:5376             *:*    users:(("node",pid=214402,fd=23))                                                    
+tcp   LISTEN 0      10                                [::1]:53            [::]:*    users:(("named",pid=829,fd=41))                                                      
+tcp   LISTEN 0      10                                [::1]:53            [::]:*    users:(("named",pid=829,fd=40))                                                      
+tcp   LISTEN 0      4096                                  *:9100             *:*    users:(("node_exporter",pid=125716,fd=3))                                            
+tcp   LISTEN 0      4096                                  *:9090             *:*    users:(("prometheus",pid=125029,fd=7))                                               
+tcp   LISTEN 0      4096                                  *:9115             *:*    users:(("blackbox_export",pid=124237,fd=3))                                          
+tcp   LISTEN 0      4096                                  *:3000             *:*    users:(("grafana",pid=121770,fd=11))                                                 
+tcp   LISTEN 0      10                      [fd00:0:0:8::1]:53            [::]:*    users:(("named",pid=829,fd=65))                                                      
+tcp   LISTEN 0      10                      [fd00:0:0:8::1]:53            [::]:*    users:(("named",pid=829,fd=66))                                                      
+tcp   LISTEN 0      10      [fe80::9400:4ff:fe64:d85e]%eth0:53            [::]:*    users:(("named",pid=829,fd=48))                                                      
+tcp   LISTEN 0      10      [fe80::9400:4ff:fe64:d85e]%eth0:53            [::]:*    users:(("named",pid=829,fd=49))                                                      
+tcp   LISTEN 0      10               [2a01:4f9:c013:5d3::1]:53            [::]:*    users:(("named",pid=829,fd=44))                                                      
+tcp   LISTEN 0      10               [2a01:4f9:c013:5d3::1]:53            [::]:*    users:(("named",pid=829,fd=45))                                                      
+tcp   LISTEN 0      4096                               [::]:22            [::]:*    users:(("sshd",pid=119318,fd=4),("systemd",pid=1,fd=250))                            
+tcp   LISTEN 0      511                                [::]:80            [::]:*    users:(("nginx",pid=299623,fd=6),("nginx",pid=299622,fd=6),("nginx",pid=288527,fd=6))
+
+# --- journal socks5tun ---
+Aug 10 13:57:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:06 [INFO] [Thread-121 (_handle_client)] SOCKS5 request header from 127.0.0.1: 05010003
+Aug 10 13:57:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:06 [INFO] [Thread-121 (_handle_client)] Established TCP tunnel from 127.0.0.1 to 104.21.54.91:443
+Aug 10 13:57:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:06 [INFO] [Thread-121 (_handle_client)] Closed TCP tunnel for 127.0.0.1
+Aug 10 13:57:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:07 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:47846 (318238 python)
+Aug 10 13:57:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:07 [WARNING] [Thread-122 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:57:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:07 [INFO] [Thread-122 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:57:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:22 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:51906 (318238 python)
+Aug 10 13:57:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:22 [WARNING] [Thread-123 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:57:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:22 [INFO] [Thread-123 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:57:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:37 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:39922 (318238 python)
+Aug 10 13:57:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:37 [WARNING] [Thread-124 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:57:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:37 [INFO] [Thread-124 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:57:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:52 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:45218 (318238 python)
+Aug 10 13:57:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:52 [WARNING] [Thread-125 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:57:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:57:52 [INFO] [Thread-125 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:58:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:07 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:46094 (318238 python)
+Aug 10 13:58:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:07 [WARNING] [Thread-126 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:58:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:07 [INFO] [Thread-126 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:58:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:22 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:49078 (318238 python)
+Aug 10 13:58:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:22 [WARNING] [Thread-127 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:58:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:22 [INFO] [Thread-127 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:58:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:37 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:47334 (318238 python)
+Aug 10 13:58:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:37 [WARNING] [Thread-128 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:58:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:37 [INFO] [Thread-128 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:58:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:52 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:40182 (318238 python)
+Aug 10 13:58:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:52 [WARNING] [Thread-129 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:58:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:58:52 [INFO] [Thread-129 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:59:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:07 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:50638 (318238 python)
+Aug 10 13:59:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:07 [WARNING] [Thread-130 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:59:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:07 [INFO] [Thread-130 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:59:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:22 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:41510 (318238 python)
+Aug 10 13:59:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:22 [WARNING] [Thread-131 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:59:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:22 [INFO] [Thread-131 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:59:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:37 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:37432 (318238 python)
+Aug 10 13:59:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:37 [WARNING] [Thread-132 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:59:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:37 [INFO] [Thread-132 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 13:59:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:52 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:50904 (318238 python)
+Aug 10 13:59:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:52 [WARNING] [Thread-133 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 13:59:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 13:59:52 [INFO] [Thread-133 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:00:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:07 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:49498 (318238 python)
+Aug 10 14:00:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:07 [WARNING] [Thread-134 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:00:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:07 [INFO] [Thread-134 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:00:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:22 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:44678 (318238 python)
+Aug 10 14:00:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:22 [WARNING] [Thread-135 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:00:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:22 [INFO] [Thread-135 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:00:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:37 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:42282 (318238 python)
+Aug 10 14:00:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:37 [WARNING] [Thread-136 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:00:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:37 [INFO] [Thread-136 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:00:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:52 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:53010 (318238 python)
+Aug 10 14:00:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:52 [WARNING] [Thread-137 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:00:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:00:52 [INFO] [Thread-137 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:01:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:07 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:53612 (318238 python)
+Aug 10 14:01:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:07 [WARNING] [Thread-138 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:01:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:07 [INFO] [Thread-138 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:01:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:22 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:55632 (318238 python)
+Aug 10 14:01:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:22 [WARNING] [Thread-139 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:01:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:22 [INFO] [Thread-139 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:01:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:37 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:56652 (318238 python)
+Aug 10 14:01:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:37 [WARNING] [Thread-140 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:01:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:37 [INFO] [Thread-140 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:01:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:52 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:45060 (318238 python)
+Aug 10 14:01:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:52 [WARNING] [Thread-141 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:01:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:01:52 [INFO] [Thread-141 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:48126 (318238 python)
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [WARNING] [Thread-142 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [WARNING] [Thread-142 (_handle_client)] [SNIFF] First 2 bytes from 127.0.0.1:48126: hex=0502 ascii=b'\x05\x02'
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [INFO] [Thread-142 (_handle_client)] SOCKS5 handshake header from 127.0.0.1: 0502
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [INFO] [Thread-142 (_handle_client)] SOCKS5 methods from 127.0.0.1: 0001
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [DEBUG] [Thread-142 (_handle_client)] [DEBUG] Waiting for SOCKS5 request from 127.0.0.1:48126...
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [DEBUG] [Thread-142 (_handle_client)] [DEBUG] Waiting for SOCKS5 request from 127.0.0.1:48126...
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [INFO] [Thread-142 (_handle_client)] SOCKS5 request header from 127.0.0.1: 05010003
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [INFO] [Thread-142 (_handle_client)] Established TCP tunnel from 127.0.0.1 to 104.21.54.91:443
+Aug 10 14:02:06 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:06 [INFO] [Thread-142 (_handle_client)] Closed TCP tunnel for 127.0.0.1
+Aug 10 14:02:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:07 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:48136 (318238 python)
+Aug 10 14:02:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:07 [WARNING] [Thread-143 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:02:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:07 [INFO] [Thread-143 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:02:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:22 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:37878 (318238 python)
+Aug 10 14:02:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:22 [WARNING] [Thread-144 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:02:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:22 [INFO] [Thread-144 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:02:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:37 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:59110 (318238 python)
+Aug 10 14:02:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:37 [WARNING] [Thread-145 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:02:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:37 [INFO] [Thread-145 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:02:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:52 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:51368 (318238 python)
+Aug 10 14:02:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:52 [WARNING] [Thread-146 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:02:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:02:52 [INFO] [Thread-146 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:03:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:07 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:54496 (318238 python)
+Aug 10 14:03:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:07 [WARNING] [Thread-147 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:03:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:07 [INFO] [Thread-147 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:03:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:22 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:55278 (318238 python)
+Aug 10 14:03:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:22 [WARNING] [Thread-148 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:03:22 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:22 [INFO] [Thread-148 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:03:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:37 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:44642 (318238 python)
+Aug 10 14:03:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:37 [WARNING] [Thread-149 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:03:37 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:37 [INFO] [Thread-149 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:03:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:52 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:55272 (318238 python)
+Aug 10 14:03:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:52 [WARNING] [Thread-150 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:03:52 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:03:52 [INFO] [Thread-150 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+Aug 10 14:04:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:04:07 [INFO] [MainThread] [LOCAL] TCP connection from 127.0.0.1:59166 (318238 python)
+Aug 10 14:04:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:04:07 [WARNING] [Thread-151 (_handle_client)] 👀 LOCAL connection from 127.0.0.1 — likely self-initiated
+Aug 10 14:04:07 ubuntu-4gb-hel1-2 python[318238]: 2025-08-10 14:04:07 [INFO] [Thread-151 (_handle_client)] 🔁 [LOCAL/SELF] Connection from 127.0.0.1 closed prematurely (318238 python)
+
+# --- journal ws-bridge ---
+Aug 10 10:45:56 ubuntu-4gb-hel1-2 systemd[1]: Started ws-bridge.service - WebSocket <-> TCP bridge (websocat).
+Aug 10 10:46:41 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 10:51:05 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 10:57:44 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 11:16:35 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 11:16:48 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 11:32:40 ubuntu-4gb-hel1-2 websocat[297748]: websocat: WebSocketError: I/O failure
+
+# --- systemctl ws-bridge ---
+● ws-bridge.service - WebSocket <-> TCP bridge (websocat)
+     Loaded: loaded (/etc/systemd/system/ws-bridge.service; enabled; preset: enabled)
+     Active: active (running) since Sun 2025-08-10 10:45:56 UTC; 3h 18min ago
+   Main PID: 297748 (websocat)
+      Tasks: 1 (limit: 4540)
+     Memory: 712.0K (peak: 1.1M)
+        CPU: 44ms
+     CGroup: /system.slice/ws-bridge.service
+             └─297748 /usr/local/bin/websocat --binary -E ws-l:127.0.0.1:5001 tcp:127.0.0.1:5000
+
+Aug 10 10:45:56 ubuntu-4gb-hel1-2 systemd[1]: Started ws-bridge.service - WebSocket <-> TCP bridge (websocat).
+Aug 10 10:46:41 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 10:51:05 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 10:57:44 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 11:16:35 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 11:16:48 ubuntu-4gb-hel1-2 websocat[297748]: websocat: Connection reset by peer (os error 104)
+Aug 10 11:32:40 ubuntu-4gb-hel1-2 websocat[297748]: websocat: WebSocketError: I/O failure
+
+# --- pip freeze ---
+build==1.3.0
+coverage==7.10.2
+debugpy==1.8.15
+iniconfig==2.1.0
+packaging==25.0
+pluggy==1.6.0
+psutil==7.0.0
+Pygments==2.19.2
+pyproject_hooks==1.2.0
+pyroute2==0.9.3
+pytest==8.4.1
+pytest-cov==6.2.1
+pytest-timeout==2.4.0
+socks5tun @ file:///opt/socks5tun
+types-psutil==7.0.0.20250801
+
+# --- iptables-save ---
+# Generated by iptables-save v1.8.10 (nf_tables) on Sun Aug 10 14:04:23 2025
+*filter
+:INPUT DROP [45113:5982984]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [697:49133]
+:ufw-after-forward - [0:0]
+:ufw-after-input - [0:0]
+:ufw-after-logging-forward - [0:0]
+:ufw-after-logging-input - [0:0]
+:ufw-after-logging-output - [0:0]
+:ufw-after-output - [0:0]
+:ufw-before-forward - [0:0]
+:ufw-before-input - [0:0]
+:ufw-before-logging-forward - [0:0]
+:ufw-before-logging-input - [0:0]
+:ufw-before-logging-output - [0:0]
+:ufw-before-output - [0:0]
+:ufw-logging-allow - [0:0]
+:ufw-logging-deny - [0:0]
+:ufw-not-local - [0:0]
+:ufw-reject-forward - [0:0]
+:ufw-reject-input - [0:0]
+:ufw-reject-output - [0:0]
+:ufw-skip-to-policy-forward - [0:0]
+:ufw-skip-to-policy-input - [0:0]
+:ufw-skip-to-policy-output - [0:0]
+:ufw-track-forward - [0:0]
+:ufw-track-input - [0:0]
+:ufw-track-output - [0:0]
+:ufw-user-forward - [0:0]
+:ufw-user-input - [0:0]
+:ufw-user-limit - [0:0]
+:ufw-user-limit-accept - [0:0]
+:ufw-user-logging-forward - [0:0]
+:ufw-user-logging-input - [0:0]
+:ufw-user-logging-output - [0:0]
+:ufw-user-output - [0:0]
+-A INPUT -j ufw-before-logging-input
+-A INPUT -j ufw-before-input
+-A INPUT -j ufw-after-input
+-A INPUT -j ufw-after-logging-input
+-A INPUT -j ufw-reject-input
+-A INPUT -j ufw-track-input
+-A FORWARD -j ufw-before-logging-forward
+-A FORWARD -j ufw-before-forward
+-A FORWARD -j ufw-after-forward
+-A FORWARD -j ufw-after-logging-forward
+-A FORWARD -j ufw-reject-forward
+-A FORWARD -j ufw-track-forward
+-A OUTPUT -j ufw-before-logging-output
+-A OUTPUT -j ufw-before-output
+-A OUTPUT -j ufw-after-output
+-A OUTPUT -j ufw-after-logging-output
+-A OUTPUT -j ufw-reject-output
+-A OUTPUT -j ufw-track-output
+-A ufw-after-input -p udp -m udp --dport 137 -j ufw-skip-to-policy-input
+-A ufw-after-input -p udp -m udp --dport 138 -j ufw-skip-to-policy-input
+-A ufw-after-input -p tcp -m tcp --dport 139 -j ufw-skip-to-policy-input
+-A ufw-after-input -p tcp -m tcp --dport 445 -j ufw-skip-to-policy-input
+-A ufw-after-input -p udp -m udp --dport 67 -j ufw-skip-to-policy-input
+-A ufw-after-input -p udp -m udp --dport 68 -j ufw-skip-to-policy-input
+-A ufw-after-input -m addrtype --dst-type BROADCAST -j ufw-skip-to-policy-input
+-A ufw-after-logging-forward -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW BLOCK] "
+-A ufw-after-logging-input -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW BLOCK] "
+-A ufw-before-forward -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A ufw-before-forward -p icmp -m icmp --icmp-type 3 -j ACCEPT
+-A ufw-before-forward -p icmp -m icmp --icmp-type 11 -j ACCEPT
+-A ufw-before-forward -p icmp -m icmp --icmp-type 12 -j ACCEPT
+-A ufw-before-forward -p icmp -m icmp --icmp-type 8 -j ACCEPT
+-A ufw-before-forward -j ufw-user-forward
+-A ufw-before-input -i lo -j ACCEPT
+-A ufw-before-input -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A ufw-before-input -m conntrack --ctstate INVALID -j ufw-logging-deny
+-A ufw-before-input -m conntrack --ctstate INVALID -j DROP
+-A ufw-before-input -p icmp -m icmp --icmp-type 3 -j ACCEPT
+-A ufw-before-input -p icmp -m icmp --icmp-type 11 -j ACCEPT
+-A ufw-before-input -p icmp -m icmp --icmp-type 12 -j ACCEPT
+-A ufw-before-input -p icmp -m icmp --icmp-type 8 -j ACCEPT
+-A ufw-before-input -p udp -m udp --sport 67 --dport 68 -j ACCEPT
+-A ufw-before-input -j ufw-not-local
+-A ufw-before-input -d 224.0.0.251/32 -p udp -m udp --dport 5353 -j ACCEPT
+-A ufw-before-input -d 239.255.255.250/32 -p udp -m udp --dport 1900 -j ACCEPT
+-A ufw-before-input -j ufw-user-input
+-A ufw-before-output -o lo -j ACCEPT
+-A ufw-before-output -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A ufw-before-output -j ufw-user-output
+-A ufw-logging-allow -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW ALLOW] "
+-A ufw-logging-deny -m conntrack --ctstate INVALID -m limit --limit 3/min --limit-burst 10 -j RETURN
+-A ufw-logging-deny -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW BLOCK] "
+-A ufw-not-local -m addrtype --dst-type LOCAL -j RETURN
+-A ufw-not-local -m addrtype --dst-type MULTICAST -j RETURN
+-A ufw-not-local -m addrtype --dst-type BROADCAST -j RETURN
+-A ufw-not-local -m limit --limit 3/min --limit-burst 10 -j ufw-logging-deny
+-A ufw-not-local -j DROP
+-A ufw-skip-to-policy-forward -j DROP
+-A ufw-skip-to-policy-input -j DROP
+-A ufw-skip-to-policy-output -j ACCEPT
+-A ufw-track-output -p tcp -m conntrack --ctstate NEW -j ACCEPT
+-A ufw-track-output -p udp -m conntrack --ctstate NEW -j ACCEPT
+-A ufw-user-input -s 172.64.0.0/13 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 104.24.0.0/14 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 104.16.0.0/13 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 162.158.0.0/15 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 198.41.128.0/17 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 197.234.240.0/22 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 188.114.96.0/20 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 190.93.240.0/20 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 108.162.192.0/18 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 141.101.64.0/18 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 103.31.4.0/22 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 103.22.200.0/22 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 103.21.244.0/22 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -s 173.245.48.0/20 -p tcp -m tcp --dport 80 -j ACCEPT
+-A ufw-user-input -p tcp -m tcp --dport 5000 -j DROP
+-A ufw-user-input -p tcp -m tcp --dport 22 -j ACCEPT
+-A ufw-user-input -p tcp -m tcp --dport 22 -m comment --comment "\'dapp_OpenSSH\'" -j ACCEPT
+-A ufw-user-input -p udp -m udp --dport 5000 -j ACCEPT
+-A ufw-user-input -p udp -m multiport --dports 500,4500 -j ACCEPT
+-A ufw-user-input -p tcp -m tcp --dport 3000 -j ACCEPT
+-A ufw-user-input -p tcp -m tcp --dport 80 -j DROP
+-A ufw-user-input -p tcp -m tcp --dport 443 -j DROP
+-A ufw-user-limit -m limit --limit 3/min -j LOG --log-prefix "[UFW LIMIT BLOCK] "
+-A ufw-user-limit -j REJECT --reject-with icmp-port-unreachable
+-A ufw-user-limit-accept -j ACCEPT
+COMMIT
+# Completed on Sun Aug 10 14:04:23 2025
+# Generated by iptables-save v1.8.10 (nf_tables) on Sun Aug 10 14:04:23 2025
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [38746:2715703]
+-A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+COMMIT
+# Completed on Sun Aug 10 14:04:23 2025
+
+# --- sysctl ip_forward/tcp ---
+net.ipv4.ip_forward = 1
+net.ipv4.ip_forward_update_priority = 1
+net.ipv4.ip_forward_use_pmtu = 0
+
+# --- crontab root ---
+@daily /usr/local/sbin/update_cf_ufw.sh >/tmp/update-cf-ufw.log 2>&1
+
+# --- ip a ---
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 96:00:04:64:d8:5e brd ff:ff:ff:ff:ff:ff
+    inet 46.62.133.47/32 metric 100 scope global dynamic eth0
+       valid_lft 78454sec preferred_lft 78454sec
+    inet6 2a01:4f9:c013:5d3::1/64 scope global 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::9400:4ff:fe64:d85e/64 scope link 
+       valid_lft forever preferred_lft forever
+118: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 500
+    link/none 
+    inet 10.8.0.1 peer 10.8.0.2/32 scope global tun0
+       valid_lft forever preferred_lft forever
+    inet6 fd00:0:0:8::1/128 scope global 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::4d6a:6a39:d25b:c49a/64 scope link stable-privacy 
+       valid_lft forever preferred_lft forever
+
+# --- nginx -V ---
+nginx version: nginx/1.24.0 (Ubuntu)
+built with OpenSSL 3.0.13 30 Jan 2024
+TLS SNI support enabled
+configure arguments: --with-cc-opt='-g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/nginx-XLhrax/nginx-1.24.0=. -flto=auto -ffat-lto-objects -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/build/nginx-XLhrax/nginx-1.24.0=/usr/src/nginx-1.24.0-2ubuntu7.4 -fPIC -Wdate-time -D_FORTIFY_SOURCE=3' --with-ld-opt='-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -Wl,-z,now -fPIC' --prefix=/usr/share/nginx --conf-path=/etc/nginx/nginx.conf --http-log-path=/var/log/nginx/access.log --error-log-path=stderr --lock-path=/var/lock/nginx.lock --pid-path=/run/nginx.pid --modules-path=/usr/lib/nginx/modules --http-client-body-temp-path=/var/lib/nginx/body --http-fastcgi-temp-path=/var/lib/nginx/fastcgi --http-proxy-temp-path=/var/lib/nginx/proxy --http-scgi-temp-path=/var/lib/nginx/scgi --http-uwsgi-temp-path=/var/lib/nginx/uwsgi --with-compat --with-debug --with-pcre-jit --with-http_ssl_module --with-http_stub_status_module --with-http_realip_module --with-http_auth_request_module --with-http_v2_module --with-http_dav_module --with-http_slice_module --with-threads --with-http_addition_module --with-http_flv_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_mp4_module --with-http_random_index_module --with-http_secure_link_module --with-http_sub_module --with-mail_ssl_module --with-stream_ssl_module --with-stream_ssl_preread_module --with-stream_realip_module --with-http_geoip_module=dynamic --with-http_image_filter_module=dynamic --with-http_perl_module=dynamic --with-http_xslt_module=dynamic --with-mail=dynamic --with-stream=dynamic --with-stream_geoip_module=dynamic
+
+# --- nginx -T ---
+# configuration file /etc/nginx/nginx.conf:
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+	worker_connections 768;
+	# multi_accept on;
+}
+
+http {
+
+	##
+	# Basic Settings
+	##
+
+	sendfile on;
+	tcp_nopush on;
+	types_hash_max_size 2048;
+	# server_tokens off;
+
+	# server_names_hash_bucket_size 64;
+	# server_name_in_redirect off;
+
+	include /etc/nginx/mime.types;
+	default_type application/octet-stream;
+
+	##
+	# SSL Settings
+	##
+
+	ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+	ssl_prefer_server_ciphers on;
+
+	##
+	# Logging Settings
+	##
+
+	access_log /var/log/nginx/access.log;
+
+	##
+	# Gzip Settings
+	##
+
+	gzip on;
+
+	# gzip_vary on;
+	# gzip_proxied any;
+	# gzip_comp_level 6;
+	# gzip_buffers 16 8k;
+	# gzip_http_version 1.1;
+	# gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+	##
+	# Virtual Host Configs
+	##
+
+	include /etc/nginx/conf.d/*.conf;
+	include /etc/nginx/sites-enabled/*;
+}
+
+
+#mail {
+#	# See sample authentication script at:
+#	# http://wiki.nginx.org/ImapAuthenticateWithApachePhpScript
+#
+#	# auth_http localhost/auth.php;
+#	# pop3_capabilities "TOP" "USER";
+#	# imap_capabilities "IMAP4rev1" "UIDPLUS";
+#
+#	server {
+#		listen     localhost:110;
+#		protocol   pop3;
+#		proxy      on;
+#	}
+#
+#	server {
+#		listen     localhost:143;
+#		protocol   imap;
+#		proxy      on;
+#	}
+#}
+
+# configuration file /etc/nginx/mime.types:
+
+types {
+    text/html                                        html htm shtml;
+    text/css                                         css;
+    text/xml                                         xml;
+    image/gif                                        gif;
+    image/jpeg                                       jpeg jpg;
+    application/javascript                           js;
+    application/atom+xml                             atom;
+    application/rss+xml                              rss;
+
+    text/mathml                                      mml;
+    text/plain                                       txt;
+    text/vnd.sun.j2me.app-descriptor                 jad;
+    text/vnd.wap.wml                                 wml;
+    text/x-component                                 htc;
+
+    image/avif                                       avif;
+    image/png                                        png;
+    image/svg+xml                                    svg svgz;
+    image/tiff                                       tif tiff;
+    image/vnd.wap.wbmp                               wbmp;
+    image/webp                                       webp;
+    image/x-icon                                     ico;
+    image/x-jng                                      jng;
+    image/x-ms-bmp                                   bmp;
+
+    font/woff                                        woff;
+    font/woff2                                       woff2;
+
+    application/java-archive                         jar war ear;
+    application/json                                 json;
+    application/mac-binhex40                         hqx;
+    application/msword                               doc;
+    application/pdf                                  pdf;
+    application/postscript                           ps eps ai;
+    application/rtf                                  rtf;
+    application/vnd.apple.mpegurl                    m3u8;
+    application/vnd.google-earth.kml+xml             kml;
+    application/vnd.google-earth.kmz                 kmz;
+    application/vnd.ms-excel                         xls;
+    application/vnd.ms-fontobject                    eot;
+    application/vnd.ms-powerpoint                    ppt;
+    application/vnd.oasis.opendocument.graphics      odg;
+    application/vnd.oasis.opendocument.presentation  odp;
+    application/vnd.oasis.opendocument.spreadsheet   ods;
+    application/vnd.oasis.opendocument.text          odt;
+    application/vnd.openxmlformats-officedocument.presentationml.presentation
+                                                     pptx;
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+                                                     xlsx;
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document
+                                                     docx;
+    application/vnd.wap.wmlc                         wmlc;
+    application/wasm                                 wasm;
+    application/x-7z-compressed                      7z;
+    application/x-cocoa                              cco;
+    application/x-java-archive-diff                  jardiff;
+    application/x-java-jnlp-file                     jnlp;
+    application/x-makeself                           run;
+    application/x-perl                               pl pm;
+    application/x-pilot                              prc pdb;
+    application/x-rar-compressed                     rar;
+    application/x-redhat-package-manager             rpm;
+    application/x-sea                                sea;
+    application/x-shockwave-flash                    swf;
+    application/x-stuffit                            sit;
+    application/x-tcl                                tcl tk;
+    application/x-x509-ca-cert                       der pem crt;
+    application/x-xpinstall                          xpi;
+    application/xhtml+xml                            xhtml;
+    application/xspf+xml                             xspf;
+    application/zip                                  zip;
+
+    application/octet-stream                         bin exe dll;
+    application/octet-stream                         deb;
+    application/octet-stream                         dmg;
+    application/octet-stream                         iso img;
+    application/octet-stream                         msi msp msm;
+
+    audio/midi                                       mid midi kar;
+    audio/mpeg                                       mp3;
+    audio/ogg                                        ogg;
+    audio/x-m4a                                      m4a;
+    audio/x-realaudio                                ra;
+
+    video/3gpp                                       3gpp 3gp;
+    video/mp2t                                       ts;
+    video/mp4                                        mp4;
+    video/mpeg                                       mpeg mpg;
+    video/ogg                                        ogv;
+    video/quicktime                                  mov;
+    video/webm                                       webm;
+    video/x-flv                                      flv;
+    video/x-m4v                                      m4v;
+    video/x-matroska                                 mkv;
+    video/x-mng                                      mng;
+    video/x-ms-asf                                   asx asf;
+    video/x-ms-wmv                                   wmv;
+    video/x-msvideo                                  avi;
+}
+
+# configuration file /etc/nginx/sites-enabled/default:
+##
+# You should look at the following URL's in order to grasp a solid understanding
+# of Nginx configuration files in order to fully unleash the power of Nginx.
+# https://www.nginx.com/resources/wiki/start/
+# https://www.nginx.com/resources/wiki/start/topics/tutorials/config_pitfalls/
+# https://wiki.debian.org/Nginx/DirectoryStructure
+#
+# In most cases, administrators will remove this file from sites-enabled/ and
+# leave it as reference inside of sites-available where it will continue to be
+# updated by the nginx packaging team.
+#
+# This file will automatically load configuration files provided by other
+# applications, such as Drupal or Wordpress. These applications will be made
+# available underneath a path with that package name, such as /drupal8.
+#
+# Please see /usr/share/doc/nginx-doc/examples/ for more detailed examples.
+##
+
+# Default server configuration
+#
+server {
+	listen 80 default_server;
+	listen [::]:80 default_server;
+
+	# SSL configuration
+	#
+	# listen 443 ssl default_server;
+	# listen [::]:443 ssl default_server;
+	#
+	# Note: You should disable gzip for SSL traffic.
+	# See: https://bugs.debian.org/773332
+	#
+	# Read up on ssl_ciphers to ensure a secure configuration.
+	# See: https://bugs.debian.org/765782
+	#
+	# Self signed certs generated by the ssl-cert package
+	# Don't use them in a production server!
+	#
+	# include snippets/snakeoil.conf;
+
+	root /var/www/html;
+
+	# Add index.php to the list if you are using PHP
+	index index.html index.htm index.nginx-debian.html;
+
+	server_name _;
+
+	location / {
+		# First attempt to serve request as file, then
+		# as directory, then fall back to displaying a 404.
+		try_files $uri $uri/ =404;
+	}
+
+	# pass PHP scripts to FastCGI server
+	#
+	#location ~ \.php$ {
+	#	include snippets/fastcgi-php.conf;
+	#
+	#	# With php-fpm (or other unix sockets):
+	#	fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+	#	# With php-cgi (or other tcp sockets):
+	#	fastcgi_pass 127.0.0.1:9000;
+	#}
+
+	# deny access to .htaccess files, if Apache's document root
+	# concurs with nginx's one
+	#
+	#location ~ /\.ht {
+	#	deny all;
+	#}
+}
+
+
+# Virtual Host configuration for example.com
+#
+# You can move that to a different file under sites-available/ and symlink that
+# to sites-enabled/ to enable it.
+#
+#server {
+#	listen 80;
+#	listen [::]:80;
+#
+#	server_name example.com;
+#
+#	root /var/www/example.com;
+#	index index.html;
+#
+#	location / {
+#		try_files $uri $uri/ =404;
+#	}
+#}
+
+# configuration file /etc/nginx/sites-enabled/ws.conf:
+# 1) Правильный Connection
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name ws.mytunnel.us.com;
+
+    # 2) WS-вход: точное совпадение пути (=)
+    location = /ws/2i43wj9hqO3alZaBaeiixHQJ {
+
+        # куда шьём WS
+        proxy_pass              http://127.0.0.1:5001;
+
+        # 3) WS must-haves
+        proxy_http_version      1.1;
+        proxy_set_header        Host $host;
+        proxy_set_header        Upgrade $http_upgrade;
+        proxy_set_header        Connection $connection_upgrade;
+
+        # 4) доп. заголовки — часто помогают под CF/DPI
+        proxy_set_header        X-Forwarded-Proto $scheme;
+        proxy_set_header        X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header        Origin            https://$host;
+        # если используешь подпротокол — пробрасываем:
+        proxy_set_header        Sec-WebSocket-Protocol $http_sec_websocket_protocol;
+
+        # 5) таймауты и буферы
+        proxy_read_timeout      3600;
+        proxy_send_timeout      3600;
+        proxy_buffering         off;
+
+        # 6) отдельный лог для WS
+        access_log /var/log/nginx/ws_access.log;
+    }
+
+    # маска — всё остальное прячем
+    location / { return 404; }
+}
+
+
+# --- ip r ---
+default via 172.31.1.1 dev eth0 proto dhcp src 46.62.133.47 metric 100 
+10.8.0.2 dev tun0 proto kernel scope link src 10.8.0.1 
+172.31.1.1 dev eth0 proto dhcp scope link src 46.62.133.47 metric 100 
+185.12.64.1 via 172.31.1.1 dev eth0 proto dhcp src 46.62.133.47 metric 100 
+185.12.64.2 via 172.31.1.1 dev eth0 proto dhcp src 46.62.133.47 metric 100 
+
+# --- ufw status ---
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    172.64.0.0/13              # CF-80
+80/tcp                     ALLOW IN    104.24.0.0/14              # CF-80
+80/tcp                     ALLOW IN    104.16.0.0/13              # CF-80
+80/tcp                     ALLOW IN    162.158.0.0/15             # CF-80
+80/tcp                     ALLOW IN    198.41.128.0/17            # CF-80
+80/tcp                     ALLOW IN    197.234.240.0/22           # CF-80
+80/tcp                     ALLOW IN    188.114.96.0/20            # CF-80
+80/tcp                     ALLOW IN    190.93.240.0/20            # CF-80
+80/tcp                     ALLOW IN    108.162.192.0/18           # CF-80
+80/tcp                     ALLOW IN    141.101.64.0/18            # CF-80
+80/tcp                     ALLOW IN    103.31.4.0/22              # CF-80
+80/tcp                     ALLOW IN    103.22.200.0/22            # CF-80
+80/tcp                     ALLOW IN    103.21.244.0/22            # CF-80
+80/tcp                     ALLOW IN    173.245.48.0/20            # CF-80
+5000/tcp                   DENY IN     Anywhere                  
+22/tcp                     ALLOW IN    Anywhere                   # SSH доступ
+22/tcp (OpenSSH)           ALLOW IN    Anywhere                  
+5000/udp                   ALLOW IN    Anywhere                   # TUN gateway UDP
+500,4500/udp               ALLOW IN    Anywhere                   # IPsec VPN (strongSwan)
+3000/tcp                   ALLOW IN    Anywhere                   # Grafana Web UI
+80/tcp                     DENY IN     Anywhere                  
+443/tcp                    DENY IN     Anywhere                  
+80/tcp                     ALLOW IN    2a06:98c0::/29             # CF-80
+80/tcp                     ALLOW IN    2405:8100::/32             # CF-80
+80/tcp                     ALLOW IN    2405:b500::/32             # CF-80
+80/tcp                     ALLOW IN    2803:f800::/32             # CF-80
+80/tcp                     ALLOW IN    2606:4700::/32             # CF-80
+80/tcp                     ALLOW IN    2400:cb00::/32             # CF-80
+5000/tcp (v6)              DENY IN     Anywhere (v6)             
+22/tcp (v6)                ALLOW IN    Anywhere (v6)              # SSH доступ
+22/tcp (OpenSSH (v6))      ALLOW IN    Anywhere (v6)             
+5000/udp (v6)              ALLOW IN    Anywhere (v6)              # TUN gateway UDP
+500,4500/udp (v6)          ALLOW IN    Anywhere (v6)              # IPsec VPN (strongSwan)
+3000/tcp (v6)              ALLOW IN    Anywhere (v6)              # Grafana Web UI
+80/tcp (v6)                DENY IN     Anywhere (v6)             
+443/tcp (v6)               DENY IN     Anywhere (v6)             
+
+
+# --- systemctl is-enabled (nginx/ws-bridge/socks5tun) ---
+nginx: enabled
+ws-bridge: enabled
+socks5tun: enabled
+
+# --- systemctl is-active (nginx/ws-bridge/socks5tun) ---
+nginx: active
+ws-bridge: active
+socks5tun: active
+
+# --- nginx.conf ---
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+	worker_connections 768;
+	# multi_accept on;
+}
+
+http {
+
+	##
+	# Basic Settings
+	##
+
+	sendfile on;
+	tcp_nopush on;
+	types_hash_max_size 2048;
+	# server_tokens off;
+
+	# server_names_hash_bucket_size 64;
+	# server_name_in_redirect off;
+
+	include /etc/nginx/mime.types;
+	default_type application/octet-stream;
+
+	##
+	# SSL Settings
+	##
+
+	ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+	ssl_prefer_server_ciphers on;
+
+	##
+	# Logging Settings
+	##
+
+	access_log /var/log/nginx/access.log;
+
+	##
+	# Gzip Settings
+	##
+
+	gzip on;
+
+	# gzip_vary on;
+	# gzip_proxied any;
+	# gzip_comp_level 6;
+	# gzip_buffers 16 8k;
+	# gzip_http_version 1.1;
+	# gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+	##
+	# Virtual Host Configs
+	##
+
+	include /etc/nginx/conf.d/*.conf;
+	include /etc/nginx/sites-enabled/*;
+}
+
+
+#mail {
+#	# See sample authentication script at:
+#	# http://wiki.nginx.org/ImapAuthenticateWithApachePhpScript
+#
+#	# auth_http localhost/auth.php;
+#	# pop3_capabilities "TOP" "USER";
+#	# imap_capabilities "IMAP4rev1" "UIDPLUS";
+#
+#	server {
+#		listen     localhost:110;
+#		protocol   pop3;
+#		proxy      on;
+#	}
+#
+#	server {
+#		listen     localhost:143;
+#		protocol   imap;
+#		proxy      on;
+#	}
+#}
+
+# --- update_cf_ufw.sh (Cloudflare UFW) - optional ---
+#!/usr/bin/env bash
+set -euo pipefail
+
+PORTS=(80 443)
+UFW() { ufw --force "$@"; }
+
+# Удаляем все старые правила с комментом CF-<PORT> (v4 и v6)
+delete_cf_rules() {
+  local port="$1"
+  # вытаскиваем номера правил по комменту, удаляем сверху вниз
+  mapfile -t nums < <(ufw status numbered | sed -n "s/^\[\s*\([0-9]\+\)\]\s\+.*# CF-${port}.*$/\1/p" | sort -rn)
+  for n in "${nums[@]:-}"; do UFW delete "$n"; done
+}
+
+add_cf_rules_for_port() {
+  local port="$1"
+  # v4 сначала
+  curl -fsS https://www.cloudflare.com/ips-v4 | while read -r net; do
+    [[ -n "$net" ]] && UFW prepend allow from "$net" to any port "$port" proto tcp comment "CF-${port}"
+  done
+  # затем v6
+  curl -fsS https://www.cloudflare.com/ips-v6 | while read -r net; do
+    [[ -n "$net" ]] && UFW prepend allow from "$net" to any port "$port" proto tcp comment "CF-${port}"
+  done
+  # и убедимся, что есть deny (оба стека)
+  ufw status | grep -qE "(^| )${port}/tcp.*DENY" || UFW deny "${port}/tcp"
+}
+
+for p in "${PORTS[@]}"; do
+  delete_cf_rules "$p"
+  add_cf_rules_for_port "$p"
+done
+
+echo "UFW updated for Cloudflare IPs on ports: ${PORTS[*]}"
+
+# --- last_status ---
+up
+
+# --- socks5tun-update.service ---
+[Unit]
+Description=Обновление SOCKS5TUN (wheel + config)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/update_socks5tun.sh
+
+[Install]
+WantedBy=multi-user.target
+# 💡 Обновление выполняется вручную или по таймеру
+
+# --- sshd_config ---
+
+# This is the sshd server system-wide configuration file.  See
+# sshd_config(5) for more information.
+
+# This sshd was compiled with PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
+# The strategy used for options in the default sshd_config shipped with
+# OpenSSH is to specify options with their default value where
+# possible, but leave them commented.  Uncommented options override the
+# default value.
+
+Include /etc/ssh/sshd_config.d/*.conf
+
+# When systemd socket activation is used (the default), the socket
+# configuration must be re-generated after changing Port, AddressFamily, or
+# ListenAddress.
+#
+# For changes to take effect, run:
+#
+#   systemctl daemon-reload
+#   systemctl restart ssh.socket
+#
+#Port 22
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+
+#HostKey /etc/ssh/ssh_host_rsa_key
+#HostKey /etc/ssh/ssh_host_ecdsa_key
+#HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Ciphers and keying
+#RekeyLimit default none
+
+# Logging
+#SyslogFacility AUTH
+#LogLevel INFO
+
+# Authentication:
+
+#LoginGraceTime 2m
+#PermitRootLogin prohibit-password
+#StrictModes yes
+#MaxAuthTries 6
+#MaxSessions 10
+
+#PubkeyAuthentication yes
+
+# Expect .ssh/authorized_keys2 to be disregarded by default in future.
+#AuthorizedKeysFile	.ssh/authorized_keys .ssh/authorized_keys2
+
+#AuthorizedPrincipalsFile none
+
+#AuthorizedKeysCommand none
+#AuthorizedKeysCommandUser nobody
+
+# For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
+#HostbasedAuthentication no
+# Change to yes if you don't trust ~/.ssh/known_hosts for
+# HostbasedAuthentication
+#IgnoreUserKnownHosts no
+# Don't read the user's ~/.rhosts and ~/.shosts files
+#IgnoreRhosts yes
+
+# To disable tunneled clear text passwords, change to no here!
+#PasswordAuthentication yes
+#PermitEmptyPasswords no
+
+# Change to yes to enable challenge-response passwords (beware issues with
+# some PAM modules and threads)
+KbdInteractiveAuthentication no
+
+# Kerberos options
+#KerberosAuthentication no
+#KerberosOrLocalPasswd yes
+#KerberosTicketCleanup yes
+#KerberosGetAFSToken no
+
+# GSSAPI options
+#GSSAPIAuthentication no
+#GSSAPICleanupCredentials yes
+#GSSAPIStrictAcceptorCheck yes
+#GSSAPIKeyExchange no
+
+# Set this to 'yes' to enable PAM authentication, account processing,
+# and session processing. If this is enabled, PAM authentication will
+# be allowed through the KbdInteractiveAuthentication and
+# PasswordAuthentication.  Depending on your PAM configuration,
+# PAM authentication via KbdInteractiveAuthentication may bypass
+# the setting of "PermitRootLogin prohibit-password".
+# If you just want the PAM account and session checks to run without
+# PAM authentication, then enable this but set PasswordAuthentication
+# and KbdInteractiveAuthentication to 'no'.
+UsePAM yes
+
+#AllowAgentForwarding yes
+#AllowTcpForwarding yes
+#GatewayPorts no
+X11Forwarding yes
+#X11DisplayOffset 10
+#X11UseLocalhost yes
+#PermitTTY yes
+PrintMotd no
+#PrintLastLog yes
+#TCPKeepAlive yes
+#PermitUserEnvironment no
+#Compression delayed
+#ClientAliveInterval 0
+#ClientAliveCountMax 3
+#UseDNS no
+#PidFile /run/sshd.pid
+#MaxStartups 10:30:100
+#PermitTunnel no
+#ChrootDirectory none
+#VersionAddendum none
+
+# no default banner path
+#Banner none
+
+# Allow client to pass locale environment variables
+AcceptEnv LANG LC_*
+
+# override default of no subsystems
+Subsystem	sftp	/usr/lib/openssh/sftp-server
+
+# Example of overriding settings on a per-user basis
+#Match User anoncvs
+#	X11Forwarding no
+#	AllowTcpForwarding no
+#	PermitTTY no
+#	ForceCommand cvs server
+
+# --- socks5_telegram_alert.sh ---
+#!/usr/bin/env bash
+
+TOKEN="8285785110:AAGaDAsisuGlbMYDCKkAWuYl_wmgzmEsdLQ"
+CHAT_ID="271161868"
+
+MSG="🚨 *SOCKS5TUN ALERT*: \`$1\` failed on \`$(hostname)\` at \`$(date)\`"
+curl -s -X POST https://api.telegram.org/bot${TOKEN}/sendMessage \
+     -d chat_id=${CHAT_ID} \
+     -d text="$MSG" \
+     -d parse_mode=Markdown > /dev/null
+
+# --- socks5tun.service ---
+[Unit]
+Description=SOCKS5TUN proxy server
+Wants=network-online.target
+After=network-online.target systemd-networkd-wait-online.service stunnel.service
+
+[Service]
+Type=simple
+User=root
+
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+
+ExecStartPre=-/bin/bash /opt/socks5tun/scripts/nat6_setup.sh
+
+
+ExecStart=/opt/venv-pyroute/bin/python -m socks5tun.run -c /etc/socks5tun/config_prod.json
+WorkingDirectory=/opt/socks5tun
+
+Environment=PYTHONUNBUFFERED=1
+LimitNOFILE=65535
+TasksMax=8192
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+KillSignal=SIGINT
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=true
+ProtectControlGroups=yes
+PrivateDevices=no
+DeviceAllow=/dev/net/tun rw
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK
+ProtectKernelModules=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+LockPersonality=yes
+SystemCallFilter=~@mount @swap @clock @module @reboot
+MountAPIVFS=yes
+MemoryDenyWriteExecute=yes
+
+ReadWritePaths=/proc/sys/net/ipv4/ip_forward /etc/sysctl.d /etc/iptables
+
+[Install]
+WantedBy=multi-user.target
+
+# --- update_socks5tun.sh ---
+#!/bin/bash
+set -euo pipefail
+
+PROJECT_DIR="/opt/socks5tun"
+VENV_PYTHON="/opt/venv-pyroute/bin/python"
+VENV_PIP="/opt/venv-pyroute/bin/pip"
+CONFIG_DIR="/etc/socks5tun"
+CONFIG_FILE="config_prod.json"
+SERVICE_NAME="socks5tun"
+SCRIPTS_DIR="$PROJECT_DIR/scripts"
+NAT6_SCRIPT="$SCRIPTS_DIR/nat6_setup.sh"
+
+# --- юнит и опции генерации ---
+UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+DROPIN_DIR="/etc/systemd/system/${SERVICE_NAME}.service.d"
+VENV_BIN="$VENV_PYTHON"
+WORKDIR="$PROJECT_DIR"
+CONFIG="$CONFIG_DIR/$CONFIG_FILE"
+WANT_STUNNEL="yes"         # "yes"|"no" — если stunnel обязателен
+WANT_IPV4_FORWARD="no"     # "yes"|"no" — если надо всегда включать ip_forward
+
+log() { echo "[update] $*"; }
+
+cd "$PROJECT_DIR"
+
+log "Building wheel…"
+$VENV_PYTHON -m build --wheel --outdir dist/
+
+log "Installing latest wheel…"
+LATEST_WHEEL=$(ls -1t dist/*.whl | head -n1)
+$VENV_PIP install --upgrade "$LATEST_WHEEL"
+
+# (опц.) чистим старые колёса, оставляем 3 последних
+ls -1t dist/*.whl | tail -n +4 | xargs -r rm -f
+
+log "Syncing config…"
+mkdir -p "$CONFIG_DIR"
+if [ -f "$CONFIG_DIR/$CONFIG_FILE" ]; then
+  cp -a "$CONFIG_DIR/$CONFIG_FILE" "$CONFIG_DIR/$CONFIG_FILE.bak.$(date +%F_%H%M%S)"
+fi
+cp -f "$PROJECT_DIR/$CONFIG_FILE" "$CONFIG_DIR/$CONFIG_FILE"
+
+# --------- Генерация nat6_setup.sh из конфига ---------
+log "Generating NAT6 script from config…"
+mkdir -p "$SCRIPTS_DIR"
+
+PREFIX6_DEFAULT="fd00:0:0:8::/64"
+if command -v jq >/dev/null 2>&1; then
+  PREFIX6=$(jq -r '.tun.prefix6 // empty' "$CONFIG_DIR/$CONFIG_FILE")
+  WAN_IF=$(jq -r '.nat.out_iface // empty' "$CONFIG_DIR/$CONFIG_FILE")
+else
+  log "jq not found; using defaults/fallback autodetect"
+  PREFIX6=""
+  WAN_IF=""
+fi
+
+[ -z "${PREFIX6:-}" ] && PREFIX6="$PREFIX6_DEFAULT"
+if [ -z "${WAN_IF:-}" ]; then
+  # автоопределение: сначала дефолтный v6 маршрут, затем v4, затем eth0
+  WAN_IF=$(ip -o -6 route show default 2>/dev/null | awk '{print $5}' | head -1 || true)
+  [ -z "$WAN_IF" ] && WAN_IF=$(ip -o route show default 2>/dev/null | awk '{print $5}' | head -1 || true)
+  [ -z "$WAN_IF" ] && WAN_IF="eth0"
+fi
+
+cat >"$NAT6_SCRIPT" <<EOF
+#!/bin/sh
+set -e
+
+# Autogenerated by update_socks5tun.sh — do not edit manually.
+PREFIX6="$PREFIX6"
+WAN_IF="$WAN_IF"
+
+echo "[nat6_setup] prefix6=\$PREFIX6 wan_if=\$WAN_IF"
+
+# 1) IPv6 forwarding: сейчас и персистентно
+sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null || true
+if [ -d /etc/sysctl.d ]; then
+  echo 'net.ipv6.conf.all.forwarding=1' >/etc/sysctl.d/99-socks5tun-ipv6.conf || true
+fi
+
+# 2) nftables или ip6tables (в зависимости от системы)
+if command -v nft >/dev/null 2>&1 && nft list tables 2>/dev/null | grep -q ' ip6 nat'; then
+  nft list chain ip6 nat POSTROUTING 2>/dev/null | grep -q "ip6 saddr \$PREFIX6 oif \$WAN_IF masquerade" \
+    || nft add rule ip6 nat POSTROUTING ip6 saddr \$PREFIX6 oif \$WAN_IF masquerade
+  echo "[nat6_setup] nftables rule ensured"
+else
+  ip6tables -t nat -C POSTROUTING -s "\$PREFIX6" -o "\$WAN_IF" -j MASQUERADE 2>/dev/null \
+    || ip6tables -t nat -A POSTROUTING -s "\$PREFIX6" -o "\$WAN_IF" -j MASQUERADE
+  if command -v ip6tables-save >/dev/null 2>&1 && [ -d /etc/iptables ]; then
+    ip6tables-save > /etc/iptables/rules.v6 || true
+  fi
+  echo "[nat6_setup] ip6tables rule ensured"
+fi
+
+exit 0
+EOF
+
+chmod +x "$NAT6_SCRIPT"
+
+# --------- Автогенерация systemd unit (идемпотентно) ---------
+log "Rendering systemd unit…"
+TMP_UNIT="$(mktemp)"
+cat >"$TMP_UNIT" <<EOF
+[Unit]
+Description=SOCKS5TUN proxy server
+Wants=network-online.target
+After=network-online.target systemd-networkd-wait-online.service$( [ "$WANT_STUNNEL" = "yes" ] && printf " stunnel.service" )
+
+[Service]
+Type=simple
+User=root
+
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+
+ExecStartPre=-/bin/bash $WORKDIR/scripts/nat6_setup.sh
+$( [ "$WANT_IPV4_FORWARD" = "yes" ] && echo "ExecStartPre=/bin/sh -c 'sysctl -w net.ipv4.ip_forward=1'" )
+
+ExecStart=$VENV_BIN -m socks5tun.run -c $CONFIG
+WorkingDirectory=$WORKDIR
+
+Environment=PYTHONUNBUFFERED=1
+LimitNOFILE=65535
+TasksMax=8192
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+KillSignal=SIGINT
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=true
+ProtectControlGroups=yes
+PrivateDevices=no
+DeviceAllow=/dev/net/tun rw
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK
+ProtectKernelModules=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+LockPersonality=yes
+SystemCallFilter=~@mount @swap @clock @module @reboot
+MountAPIVFS=yes
+MemoryDenyWriteExecute=yes
+
+ReadWritePaths=/proc/sys/net/ipv4/ip_forward /etc/sysctl.d /etc/iptables
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+UNIT_CHANGED=0
+if [ ! -f "$UNIT_PATH" ] || ! cmp -s "$TMP_UNIT" "$UNIT_PATH"; then
+  [ -f "$UNIT_PATH" ] && cp -a "$UNIT_PATH" "${UNIT_PATH}.bak.$(date +%Y%m%d-%H%M%S)"
+  install -m 0644 "$TMP_UNIT" "$UNIT_PATH"
+  UNIT_CHANGED=1
+fi
+rm -f "$TMP_UNIT"
+
+# (опц.) Drop-in override для локальных правок (сохранится между обновлениями)
+mkdir -p "$DROPIN_DIR"
+if [ ! -f "$DROPIN_DIR/override.conf" ]; then
+  cat >"$DROPIN_DIR/override.conf" <<'OVR'
+[Service]
+# Примеры локальных добавок (оставь закомментированными или настрой под себя):
+#RuntimeDirectory=socks5tun
+#ReadWritePaths=/var/log/socks5tun
+OVR
+fi
+
+# --------- Перезапуск сервиса ---------
+log "Reloading systemd and restarting service…"
+systemctl daemon-reload
+systemctl enable --now "$SERVICE_NAME" >/dev/null 2>&1 || true
+# если юнит изменился — перезапустим в любом случае; если нет — тоже перезапустим для подхвата нового wheel
+systemctl restart "$SERVICE_NAME"
+systemctl status "$SERVICE_NAME" --no-pager -n 20 || true
+
+log "Done."
+
+# --- nginx ws.conf (available) ---
+# 1) Правильный Connection
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name ws.mytunnel.us.com;
+
+    # 2) WS-вход: точное совпадение пути (=)
+    location = /ws/2i43wj9hqO3alZaBaeiixHQJ {
+
+        # куда шьём WS
+        proxy_pass              http://127.0.0.1:5001;
+
+        # 3) WS must-haves
+        proxy_http_version      1.1;
+        proxy_set_header        Host $host;
+        proxy_set_header        Upgrade $http_upgrade;
+        proxy_set_header        Connection $connection_upgrade;
+
+        # 4) доп. заголовки — часто помогают под CF/DPI
+        proxy_set_header        X-Forwarded-Proto $scheme;
+        proxy_set_header        X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header        Origin            https://$host;
+        # если используешь подпротокол — пробрасываем:
+        proxy_set_header        Sec-WebSocket-Protocol $http_sec_websocket_protocol;
+
+        # 5) таймауты и буферы
+        proxy_read_timeout      3600;
+        proxy_send_timeout      3600;
+        proxy_buffering         off;
+
+        # 6) отдельный лог для WS
+        access_log /var/log/nginx/ws_access.log;
+    }
+
+    # маска — всё остальное прячем
+    location / { return 404; }
+}
+
+# --- nat6_setup.sh ---
+#!/bin/sh
+set -e
+
+# Autogenerated by update_socks5tun.sh — do not edit manually.
+PREFIX6="64"
+WAN_IF="eth0"
+
+echo "[nat6_setup] prefix6=$PREFIX6 wan_if=$WAN_IF"
+
+# 1) IPv6 forwarding: сейчас и персистентно
+sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null || true
+if [ -d /etc/sysctl.d ]; then
+  echo 'net.ipv6.conf.all.forwarding=1' >/etc/sysctl.d/99-socks5tun-ipv6.conf || true
+fi
+
+# 2) nftables или ip6tables (в зависимости от системы)
+if command -v nft >/dev/null 2>&1 && nft list tables 2>/dev/null | grep -q ' ip6 nat'; then
+  nft list chain ip6 nat POSTROUTING 2>/dev/null | grep -q "ip6 saddr $PREFIX6 oif $WAN_IF masquerade"     || nft add rule ip6 nat POSTROUTING ip6 saddr $PREFIX6 oif $WAN_IF masquerade
+  echo "[nat6_setup] nftables rule ensured"
+else
+  ip6tables -t nat -C POSTROUTING -s "$PREFIX6" -o "$WAN_IF" -j MASQUERADE 2>/dev/null     || ip6tables -t nat -A POSTROUTING -s "$PREFIX6" -o "$WAN_IF" -j MASQUERADE
+  if command -v ip6tables-save >/dev/null 2>&1 && [ -d /etc/iptables ]; then
+    ip6tables-save > /etc/iptables/rules.v6 || true
+  fi
+  echo "[nat6_setup] ip6tables rule ensured"
+fi
+
+exit 0
+
+# --- resolv.conf ---
+nameserver 127.0.0.1
+
+# --- socks5_healthcheck.sh ---
+#!/usr/bin/env bash
+
+TOKEN="8285785110:AAGaDAsisuGlbMYDCKkAWuYl_wmgzmEsdLQ"
+CHAT_ID="271161868"
+
+STATUS_FILE="/var/lib/node_exporter/socks5tun.prom"
+STATE_FILE="/var/lib/socks5health/last_status"
+
+# Создаём папку для STATE_FILE, если не существует
+mkdir -p "$(dirname "$STATE_FILE")"
+
+# Проверка доступности через SOCKS5
+if curl -sS -4 --max-time 8 --socks5-hostname 127.0.0.1:5000 https://ifconfig.co > /dev/null; then
+    CURRENT="up"
+    systemd-notify --status="SOCKS5 OK" --ready
+    echo "socks5tun_status 1" > "$STATUS_FILE"
+else
+    CURRENT="down"
+    systemd-notify --status="SOCKS5 ERROR"
+    echo "socks5tun_status 0" > "$STATUS_FILE"
+fi
+
+# Читаем предыдущее состояние
+PREV=$(cat "$STATE_FILE" 2>/dev/null || echo "unknown")
+
+# Отправка Telegram только если статус изменился
+if [[ "$CURRENT" == "up" && "$PREV" != "up" ]]; then
+    curl -s -X POST https://api.telegram.org/bot${TOKEN}/sendMessage \
+         -d chat_id=${CHAT_ID} \
+         -d text="✅ SOCKS5TUN восстановлен на $(hostname) в $(date)" > /dev/null
+elif [[ "$CURRENT" == "down" && "$PREV" != "down" ]]; then
+    curl -s -X POST https://api.telegram.org/bot${TOKEN}/sendMessage \
+         -d chat_id=${CHAT_ID} \
+         -d text="🚨 SOCKS5TUN НЕ РАБОТАЕТ на $(hostname) в $(date)" > /dev/null
+fi
+
+# Обновляем текущее состояние
+echo "$CURRENT" > "$STATE_FILE"
+
+# Код завершения
+[[ "$CURRENT" == "up" ]] && exit 0 || exit 1
+
+# --- ws-bridge.service ---
+[Unit]
+Description=WebSocket <-> TCP bridge (websocat)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=wsbridge
+Group=nogroup
+ExecStart=/usr/local/bin/websocat --binary -E ws-l:127.0.0.1:5001 tcp:127.0.0.1:5000
+Restart=always
+RestartSec=1
+
+# Безопасность
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
+
+# --- socks5_healthcheck.timer ---
+[Unit]
+Description=Run SOCKS5TUN health-probe every 5 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+
+# --- restart-socks5tun@.service ---
+[Unit]
+Description=Auto-restart SOCKS5TUN when %i fails
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart socks5tun
+
+
+# --- nginx ws.conf symlink ---
+lrwxrwxrwx 1 root root 34 Aug 10 09:38 /etc/nginx/sites-enabled/ws.conf -> /etc/nginx/sites-available/ws.conf
+
+# --- nginx ws.conf (resolved target) ---
+# 1) Правильный Connection
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name ws.mytunnel.us.com;
+
+    # 2) WS-вход: точное совпадение пути (=)
+    location = /ws/2i43wj9hqO3alZaBaeiixHQJ {
+
+        # куда шьём WS
+        proxy_pass              http://127.0.0.1:5001;
+
+        # 3) WS must-haves
+        proxy_http_version      1.1;
+        proxy_set_header        Host $host;
+        proxy_set_header        Upgrade $http_upgrade;
+        proxy_set_header        Connection $connection_upgrade;
+
+        # 4) доп. заголовки — часто помогают под CF/DPI
+        proxy_set_header        X-Forwarded-Proto $scheme;
+        proxy_set_header        X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header        Origin            https://$host;
+        # если используешь подпротокол — пробрасываем:
+        proxy_set_header        Sec-WebSocket-Protocol $http_sec_websocket_protocol;
+
+        # 5) таймауты и буферы
+        proxy_read_timeout      3600;
+        proxy_send_timeout      3600;
+        proxy_buffering         off;
+
+        # 6) отдельный лог для WS
+        access_log /var/log/nginx/ws_access.log;
+    }
+
+    # маска — всё остальное прячем
+    location / { return 404; }
+}
+
+# --- /var/log/nginx/ws_access.log (tail -n 20) ---
+104.23.223.43 - - [10/Aug/2025:10:57:44 +0000] "GET /ws/2i43wj9hqO3alZaBaeiixHQJ HTTP/1.1" 101 0 "-" "-"
+104.23.221.186 - - [10/Aug/2025:11:00:55 +0000] "GET /ws/2i43wj9hqO3alZaBaeiixHQJ HTTP/1.1" 101 4 "-" "-"
+104.23.221.10 - - [10/Aug/2025:11:16:48 +0000] "GET /ws/2i43wj9hqO3alZaBaeiixHQJ HTTP/1.1" 101 0 "-" "-"
+104.23.223.86 - - [10/Aug/2025:11:29:58 +0000] "GET /ws/2i43wj9hqO3alZaBaeiixHQJ HTTP/1.1" 101 4 "-" "-"
+104.23.221.182 - - [10/Aug/2025:11:32:40 +0000] "GET /ws/2i43wj9hqO3alZaBaeiixHQJ HTTP/1.1" 400 55 "-" "curl/8.5.0"
+104.23.221.146 - - [10/Aug/2025:13:05:02 +0000] "GET /ws/2i43wj9hqO3alZaBaeiixHQJ HTTP/1.1" 101 4 "-" "-"
+104.23.221.147 - - [10/Aug/2025:13:09:21 +0000] "GET /ws/2i43wj9hqO3alZaBaeiixHQJ HTTP/1.1" 101 4 "-" "-"
+104.23.223.49 - - [10/Aug/2025:13:13:33 +0000] "GET /ws/2i43wj9hqO3alZaBaeiixHQJ HTTP/1.1" 101 4 "-" "-"

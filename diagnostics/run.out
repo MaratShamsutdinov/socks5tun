@@ -1,0 +1,5 @@
+[INFO] → collect_tests()
+[INFO] → collect_project_tree()
+[INFO] → collect_modules()
+[INFO] → collect_misc()
+[INFO] → dump_configs()

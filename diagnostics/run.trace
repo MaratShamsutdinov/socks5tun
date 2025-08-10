@@ -1,0 +1,623 @@
++ set -Eeuo pipefail
++ trap 'log_err "Fail @ $LINENO: $BASH_COMMAND"' ERR
++ [[ -t 1 ]]
++ COLOR_OK=
++ COLOR_WARN=
++ COLOR_ERR=
++ COLOR_RESET=
++ OUT_DIR=diagnostics
++ TEST_DIR=tests
++ OUT_FILE=diagnostics/socks5_diagnostics.txt
++ AUTHOR=root
++ MOD_DIR=socks5tun
++ MISC_FILE=diagnostics/misc_files.txt
++ MOD_FILE=diagnostics/socks5tun_modules.txt
++ TREE_FILE=diagnostics/project_tree.txt
++ STRUCTURE_FILE=diagnostics/structure_index.txt
++ CONFIG_FILE=diagnostics/server_configs.txt
++ IGNORE_PATTERNS='(^|/)(__pycache__|\.pytest_cache|\.mypy_cache|\.git|\.venv|venv|diagnostics|\.vscode)(/|$)'
++ [[ ./diagnostics/collect_tests.sh == \.\/\d\i\a\g\n\o\s\t\i\c\s\/\c\o\l\l\e\c\t\_\t\e\s\t\s\.\s\h ]]
++ main
++ parse_cli
++ local opts
+++ getopt -o '' -l out-file:,out-dir:,test-dir:,author:,help --
++ opts=' --'
++ eval set -- ' --'
+++ set -- --
++ true
++ case "$1" in
++ shift
++ break
++ init_output_files
++ mkdir -p diagnostics
++ for f in "$OUT_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE" "$TREE_FILE"
++ :
++ printf 'Generated on %(%Y-%m-%d %H:%M:%S)T by %s\n\n' -1 root
++ for f in "$OUT_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE" "$TREE_FILE"
++ :
++ printf 'Generated on %(%Y-%m-%d %H:%M:%S)T by %s\n\n' -1 root
++ for f in "$OUT_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE" "$TREE_FILE"
++ :
++ printf 'Generated on %(%Y-%m-%d %H:%M:%S)T by %s\n\n' -1 root
++ for f in "$OUT_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE" "$TREE_FILE"
++ :
++ printf 'Generated on %(%Y-%m-%d %H:%M:%S)T by %s\n\n' -1 root
++ safe_run collect_tests collect_project_tree collect_modules collect_misc dump_configs
++ for func in "$@"
++ log_info '→ collect_tests()'
++ echo -e '[INFO] → collect_tests()'
++ collect_tests
++ log_info '=== ТЕСТОВЫЕ ФАЙЛЫ ==='
++ echo -e '[INFO] === ТЕСТОВЫЕ ФАЙЛЫ ==='
++ [[ -d tests ]]
++ find tests -type f -name '*.py' -print0
++ sort -z
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_config.py
++ cat tests/test_config.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_dummy_tun.py
++ cat tests/test_dummy_tun.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_integration_dummy.py
++ cat tests/test_integration_dummy.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_linux_tun.py
++ cat tests/test_linux_tun.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_logger.py
++ cat tests/test_logger.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_run.py
++ cat tests/test_run.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_server.py
++ cat tests/test_server.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_socks.py
++ cat tests/test_socks.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_udp_handler.py
++ cat tests/test_udp_handler.py
++ IFS=
++ read -r -d '' file
++ printf '\n# --- %s ---\n' tests/test_udp_socks5.py
++ cat tests/test_udp_socks5.py
++ IFS=
++ read -r -d '' file
++ for func in "$@"
++ log_info '→ collect_project_tree()'
++ echo -e '[INFO] → collect_project_tree()'
++ collect_project_tree
++ printf '=== ДЕРЕВО ПРОЕКТА ===\n'
++ command -v tree
++ tree -a --dirsfirst -I '(^|/)(__pycache__|\.pytest_cache|\.mypy_cache|\.git|\.venv|venv|diagnostics|\.vscode)(/|$)'
++ for func in "$@"
++ log_info '→ collect_modules()'
++ echo -e '[INFO] → collect_modules()'
++ collect_modules
++ log_info '=== SOCKS5 MODULES (socks5tun) ==='
++ echo -e '[INFO] === SOCKS5 MODULES (socks5tun) ==='
++ [[ -d socks5tun ]]
++ find socks5tun -type f -name '*.py' '!' -name run.py '!' -name server.py '!' -name udp_handler.py -print0
++ sort -z
++ IFS=
++ read -r -d '' file
++ relpath=socks5tun/config.py
++ printf '%s\n' socks5tun/config.py
++ printf '\n# --- %s ---\n' socks5tun/config.py
++ cat socks5tun/config.py
++ IFS=
++ read -r -d '' file
++ relpath=socks5tun/dummy_tun.py
++ printf '%s\n' socks5tun/dummy_tun.py
++ printf '\n# --- %s ---\n' socks5tun/dummy_tun.py
++ cat socks5tun/dummy_tun.py
++ IFS=
++ read -r -d '' file
++ relpath=socks5tun/__init__.py
++ printf '%s\n' socks5tun/__init__.py
++ printf '\n# --- %s ---\n' socks5tun/__init__.py
++ cat socks5tun/__init__.py
++ IFS=
++ read -r -d '' file
++ relpath=socks5tun/logger.py
++ printf '%s\n' socks5tun/logger.py
++ printf '\n# --- %s ---\n' socks5tun/logger.py
++ cat socks5tun/logger.py
++ IFS=
++ read -r -d '' file
++ for func in "$@"
++ log_info '→ collect_misc()'
++ echo -e '[INFO] → collect_misc()'
++ collect_misc
++ log_info '=== MISC FILES ==='
++ echo -e '[INFO] === MISC FILES ==='
++ mapfile -d '' misc
+++ find . -type f '(' -name '*.py' -o -name '*.json' -o -name '*.sh' -o -name '*.md' -o -name '*.txt' -o -name '*.yml' ')' -not -path './tests/*' -not -path './socks5tun/*' -not -path '*/__pycache__/*' -not -path '*/.pytest_cache/*' -not -path '*/.mypy_cache/*' -not -path '*/.venv/*' -not -path '*/venv/*' -not -path '*/.git/*' -not -path '*/.vscode/*' -not -name '*.pyc' -not -path './diagnostics/*' -not -path '*/socks5tun.egg-info/*' -size -100k -print0
++ (( 25 == 0 ))
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./help.txt
++ cat ./help.txt
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./requirements.txt
++ cat ./requirements.txt
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./config_dev.json
++ cat ./config_dev.json
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./.github/workflows/test.yml
++ cat ./.github/workflows/test.yml
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./htmlcov/status.json
++ cat ./htmlcov/status.json
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./config_prod.json
++ cat ./config_prod.json
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./build/lib/socks5tun/dummy_tun.py
++ cat ./build/lib/socks5tun/dummy_tun.py
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./build/lib/socks5tun/config.py
++ cat ./build/lib/socks5tun/config.py
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./build/lib/socks5tun/logger.py
++ cat ./build/lib/socks5tun/logger.py
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./build/lib/socks5tun/__init__.py
++ cat ./build/lib/socks5tun/__init__.py
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./build/lib/socks5tun/run.py
++ cat ./build/lib/socks5tun/run.py
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./build/lib/socks5tun/server.py
++ cat ./build/lib/socks5tun/server.py
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./build/lib/socks5tun/udp_handler.py
++ cat ./build/lib/socks5tun/udp_handler.py
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/socks5_healthcheck.sh
++ cat ./scripts/socks5_healthcheck.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/services_exporter.sh
++ cat ./scripts/services_exporter.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/connections_exporter.sh
++ cat ./scripts/connections_exporter.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/update_socks5tun.sh
++ cat ./scripts/update_socks5tun.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/nat6_setup.sh
++ cat ./scripts/nat6_setup.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/update_cf_ufw.sh
++ cat ./scripts/update_cf_ufw.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/socks5_telegram_alert.sh
++ cat ./scripts/socks5_telegram_alert.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/push.sh
++ cat ./scripts/push.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/coverage.sh
++ cat ./scripts/coverage.sh
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./scripts/README.txt
++ cat ./scripts/README.txt
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./README.md
++ cat ./README.md
++ for f in "${misc[@]}"
++ printf '\n# --- %s ---\n' ./setup.py
++ cat ./setup.py
++ for func in "$@"
++ log_info '→ dump_configs()'
++ echo -e '[INFO] → dump_configs()'
++ dump_configs
++ log_info '=== SERVER CONFIGS ==='
++ echo -e '[INFO] === SERVER CONFIGS ==='
++ USE_SUDO=
++ [[ 0 -ne 0 ]]
++ CMDS=(['ufw status']=' ufw status verbose | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\''' ['iptables-save']=' iptables-save' ['sysctl ip_forward/tcp']=' sysctl -a | grep -E '\''net\.ipv4\.ip_forward|^tcp_'\''' ['ip a']='ip a' ['ip r']='ip r' ['ss -tunlp']='(command -v ss &>/dev/null && (ss -tunlp ||  ss -tunlp))' ['systemctl running']=' systemctl list-units --type=service --state=running' ['crontab root']=' crontab -l -u root' ['dpkg (net)']='dpkg -l | grep -Ei '\''openvpn|stunnel|iptables|wireguard|net-tools|nginx'\''' ['journal socks5tun']=' journalctl -u socks5tun.service --no-pager -n 100 | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\''' ['nft list ruleset']=' nft list ruleset' ['pip freeze']='pip freeze' ['systemctl ws-bridge']=' systemctl status ws-bridge --no-pager' ['journal ws-bridge']=' journalctl -u ws-bridge --no-pager -n 200 | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\''' ['nginx -T']=' nginx -T' ['websocat --version']='/usr/local/bin/websocat --version || websocat --version' ['listen 80/5001/5000']='ss -ltnp | egrep '\'':80\b|:5001\b|:5000\b'\'' || true' ['listen 80/443/11443/5001/5000']='ss -ltnp | egrep ":80\b|:443\b|:11443\b|:5001\b|:5000\b" || true' ['systemctl status stunnel']=' systemctl status stunnel --no-pager' ['systemctl cat stunnel']=' systemctl cat stunnel' ['ufw status numbered']=' ufw status numbered' ['nginx -V']=' nginx -V 2>&1' ['systemd timers']=' systemctl list-timers --all --no-pager' ['update_cf_ufw.sh target']='ls -l /usr/local/sbin/update_cf_ufw.sh; readlink -f /usr/local/sbin/update_cf_ufw.sh || true' ['/var/log/ufw.log tail']=' tail -n 100 /var/log/ufw.log 2>/dev/null || true')
++ declare -A CMDS
++ for k in "${!CMDS[@]}"
++ append_cmd 'update_cf_ufw.sh target' 'ls -l /usr/local/sbin/update_cf_ufw.sh; readlink -f /usr/local/sbin/update_cf_ufw.sh || true'
++ local 'title=update_cf_ufw.sh target'
++ local 'cmd=ls -l /usr/local/sbin/update_cf_ufw.sh; readlink -f /usr/local/sbin/update_cf_ufw.sh || true'
++ echo -e '\n# --- update_cf_ufw.sh target ---'
++ eval 'ls -l /usr/local/sbin/update_cf_ufw.sh; readlink -f /usr/local/sbin/update_cf_ufw.sh || true'
++ for k in "${!CMDS[@]}"
++ append_cmd 'dpkg (net)' 'dpkg -l | grep -Ei '\''openvpn|stunnel|iptables|wireguard|net-tools|nginx'\'''
++ local 'title=dpkg (net)'
++ local 'cmd=dpkg -l | grep -Ei '\''openvpn|stunnel|iptables|wireguard|net-tools|nginx'\'''
++ echo -e '\n# --- dpkg (net) ---'
++ eval 'dpkg -l | grep -Ei '\''openvpn|stunnel|iptables|wireguard|net-tools|nginx'\'''
++ for k in "${!CMDS[@]}"
++ append_cmd 'systemctl cat stunnel' ' systemctl cat stunnel'
++ local 'title=systemctl cat stunnel'
++ local 'cmd= systemctl cat stunnel'
++ echo -e '\n# --- systemctl cat stunnel ---'
++ eval ' systemctl cat stunnel'
++ for k in "${!CMDS[@]}"
++ append_cmd 'listen 80/443/11443/5001/5000' 'ss -ltnp | egrep ":80\b|:443\b|:11443\b|:5001\b|:5000\b" || true'
++ local 'title=listen 80/443/11443/5001/5000'
++ local 'cmd=ss -ltnp | egrep ":80\b|:443\b|:11443\b|:5001\b|:5000\b" || true'
++ echo -e '\n# --- listen 80/443/11443/5001/5000 ---'
++ eval 'ss -ltnp | egrep ":80\b|:443\b|:11443\b|:5001\b|:5000\b" || true'
++ for k in "${!CMDS[@]}"
++ append_cmd 'nft list ruleset' ' nft list ruleset'
++ local 'title=nft list ruleset'
++ local 'cmd= nft list ruleset'
++ echo -e '\n# --- nft list ruleset ---'
++ eval ' nft list ruleset'
++ for k in "${!CMDS[@]}"
++ append_cmd 'ufw status numbered' ' ufw status numbered'
++ local 'title=ufw status numbered'
++ local 'cmd= ufw status numbered'
++ echo -e '\n# --- ufw status numbered ---'
++ eval ' ufw status numbered'
++ for k in "${!CMDS[@]}"
++ append_cmd 'listen 80/5001/5000' 'ss -ltnp | egrep '\'':80\b|:5001\b|:5000\b'\'' || true'
++ local 'title=listen 80/5001/5000'
++ local 'cmd=ss -ltnp | egrep '\'':80\b|:5001\b|:5000\b'\'' || true'
++ echo -e '\n# --- listen 80/5001/5000 ---'
++ eval 'ss -ltnp | egrep '\'':80\b|:5001\b|:5000\b'\'' || true'
++ for k in "${!CMDS[@]}"
++ append_cmd 'websocat --version' '/usr/local/bin/websocat --version || websocat --version'
++ local 'title=websocat --version'
++ local 'cmd=/usr/local/bin/websocat --version || websocat --version'
++ echo -e '\n# --- websocat --version ---'
++ eval '/usr/local/bin/websocat --version || websocat --version'
++ for k in "${!CMDS[@]}"
++ append_cmd '/var/log/ufw.log tail' ' tail -n 100 /var/log/ufw.log 2>/dev/null || true'
++ local 'title=/var/log/ufw.log tail'
++ local 'cmd= tail -n 100 /var/log/ufw.log 2>/dev/null || true'
++ echo -e '\n# --- /var/log/ufw.log tail ---'
++ eval ' tail -n 100 /var/log/ufw.log 2>/dev/null || true'
++ for k in "${!CMDS[@]}"
++ append_cmd 'systemd timers' ' systemctl list-timers --all --no-pager'
++ local 'title=systemd timers'
++ local 'cmd= systemctl list-timers --all --no-pager'
++ echo -e '\n# --- systemd timers ---'
++ eval ' systemctl list-timers --all --no-pager'
++ for k in "${!CMDS[@]}"
++ append_cmd 'systemctl running' ' systemctl list-units --type=service --state=running'
++ local 'title=systemctl running'
++ local 'cmd= systemctl list-units --type=service --state=running'
++ echo -e '\n# --- systemctl running ---'
++ eval ' systemctl list-units --type=service --state=running'
++ for k in "${!CMDS[@]}"
++ append_cmd 'ss -tunlp' '(command -v ss &>/dev/null && (ss -tunlp ||  ss -tunlp))'
++ local 'title=ss -tunlp'
++ local 'cmd=(command -v ss &>/dev/null && (ss -tunlp ||  ss -tunlp))'
++ echo -e '\n# --- ss -tunlp ---'
++ eval '(command -v ss &>/dev/null && (ss -tunlp ||  ss -tunlp))'
++ for k in "${!CMDS[@]}"
++ append_cmd 'journal socks5tun' ' journalctl -u socks5tun.service --no-pager -n 100 | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ local 'title=journal socks5tun'
++ local 'cmd= journalctl -u socks5tun.service --no-pager -n 100 | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ echo -e '\n# --- journal socks5tun ---'
++ eval ' journalctl -u socks5tun.service --no-pager -n 100 | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ for k in "${!CMDS[@]}"
++ append_cmd 'journal ws-bridge' ' journalctl -u ws-bridge --no-pager -n 200 | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ local 'title=journal ws-bridge'
++ local 'cmd= journalctl -u ws-bridge --no-pager -n 200 | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ echo -e '\n# --- journal ws-bridge ---'
++ eval ' journalctl -u ws-bridge --no-pager -n 200 | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ for k in "${!CMDS[@]}"
++ append_cmd 'systemctl ws-bridge' ' systemctl status ws-bridge --no-pager'
++ local 'title=systemctl ws-bridge'
++ local 'cmd= systemctl status ws-bridge --no-pager'
++ echo -e '\n# --- systemctl ws-bridge ---'
++ eval ' systemctl status ws-bridge --no-pager'
++ for k in "${!CMDS[@]}"
++ append_cmd 'pip freeze' 'pip freeze'
++ local 'title=pip freeze'
++ local 'cmd=pip freeze'
++ echo -e '\n# --- pip freeze ---'
++ eval 'pip freeze'
++ for k in "${!CMDS[@]}"
++ append_cmd iptables-save ' iptables-save'
++ local title=iptables-save
++ local 'cmd= iptables-save'
++ echo -e '\n# --- iptables-save ---'
++ eval ' iptables-save'
++ for k in "${!CMDS[@]}"
++ append_cmd 'sysctl ip_forward/tcp' ' sysctl -a | grep -E '\''net\.ipv4\.ip_forward|^tcp_'\'''
++ local 'title=sysctl ip_forward/tcp'
++ local 'cmd= sysctl -a | grep -E '\''net\.ipv4\.ip_forward|^tcp_'\'''
++ echo -e '\n# --- sysctl ip_forward/tcp ---'
++ eval ' sysctl -a | grep -E '\''net\.ipv4\.ip_forward|^tcp_'\'''
++ for k in "${!CMDS[@]}"
++ append_cmd 'crontab root' ' crontab -l -u root'
++ local 'title=crontab root'
++ local 'cmd= crontab -l -u root'
++ echo -e '\n# --- crontab root ---'
++ eval ' crontab -l -u root'
++ for k in "${!CMDS[@]}"
++ append_cmd 'ip a' 'ip a'
++ local 'title=ip a'
++ local 'cmd=ip a'
++ echo -e '\n# --- ip a ---'
++ eval 'ip a'
++ for k in "${!CMDS[@]}"
++ append_cmd 'nginx -V' ' nginx -V 2>&1'
++ local 'title=nginx -V'
++ local 'cmd= nginx -V 2>&1'
++ echo -e '\n# --- nginx -V ---'
++ eval ' nginx -V 2>&1'
++ for k in "${!CMDS[@]}"
++ append_cmd 'nginx -T' ' nginx -T'
++ local 'title=nginx -T'
++ local 'cmd= nginx -T'
++ echo -e '\n# --- nginx -T ---'
++ eval ' nginx -T'
++ for k in "${!CMDS[@]}"
++ append_cmd 'ip r' 'ip r'
++ local 'title=ip r'
++ local 'cmd=ip r'
++ echo -e '\n# --- ip r ---'
++ eval 'ip r'
++ for k in "${!CMDS[@]}"
++ append_cmd 'ufw status' ' ufw status verbose | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ local 'title=ufw status'
++ local 'cmd= ufw status verbose | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ echo -e '\n# --- ufw status ---'
++ eval ' ufw status verbose | sed -r '\''s/\x1B\[[0-9;]*[mK]//g'\'''
++ for k in "${!CMDS[@]}"
++ append_cmd 'systemctl status stunnel' ' systemctl status stunnel --no-pager'
++ local 'title=systemctl status stunnel'
++ local 'cmd= systemctl status stunnel --no-pager'
++ echo -e '\n# --- systemctl status stunnel ---'
++ eval ' systemctl status stunnel --no-pager'
++ append_cmd_sh 'systemctl is-enabled (nginx/ws-bridge/socks5tun/stunnel)' 'for s in nginx ws-bridge socks5tun stunnel; do
+      echo -n "$s: "; systemctl is-enabled "$s" 2>/dev/null || echo not-found
+    done'
++ local 'title=systemctl is-enabled (nginx/ws-bridge/socks5tun/stunnel)'
++ shift
++ echo -e '\n# --- systemctl is-enabled (nginx/ws-bridge/socks5tun/stunnel) ---'
++ bash -lc 'for s in nginx ws-bridge socks5tun stunnel; do
+      echo -n "$s: "; systemctl is-enabled "$s" 2>/dev/null || echo not-found
+    done'
++ append_cmd_sh 'systemctl is-active (nginx/ws-bridge/socks5tun/stunnel)' 'for s in nginx ws-bridge socks5tun stunnel; do
+      echo -n "$s: "; systemctl is-active "$s"  2>/dev/null || echo not-found
+    done'
++ local 'title=systemctl is-active (nginx/ws-bridge/socks5tun/stunnel)'
++ shift
++ echo -e '\n# --- systemctl is-active (nginx/ws-bridge/socks5tun/stunnel) ---'
++ bash -lc 'for s in nginx ws-bridge socks5tun stunnel; do
+      echo -n "$s: "; systemctl is-active "$s"  2>/dev/null || echo not-found
+    done'
++ FILE_DUMPS=(['/etc/stunnel/stunnel.conf']='stunnel.conf' ['/etc/systemd/system/socks5tun.service']='socks5tun.service' ['/etc/ssh/sshd_config']='sshd_config' ['/etc/systemd/system/socks5tun-update.service']='socks5tun-update.service' ['/usr/local/bin/update_socks5tun.sh']='update_socks5tun.sh' ['/etc/systemd/system/socks5_healthcheck.service']='socks5_healthcheck.service' ['/etc/systemd/system/socks5-healthcheck.timer']='socks5_healthcheck.timer' ['/etc/systemd/system/restart-socks5tun@.service']='restart-socks5tun@.service' ['/usr/local/bin/socks5_healthcheck.sh']='socks5_healthcheck.sh' ['/usr/local/bin/socks5_telegram_alert.sh']='socks5_telegram_alert.sh' ['/etc/systemd/system/stunnel.service']='stunnel.service (alt)' ['/etc/tmpfiles.d/stunnel.conf']='tmpfiles-stunnel.conf' ['/etc/init.d/stunnel4']='init.d stunnel4' ['/etc/resolv.conf']='resolv.conf' ['/var/lib/socks5health/last_status']='last_status' ['/etc/systemd/system/ws-bridge.service']='ws-bridge.service' ['/etc/nginx/sites-available/ws.conf']='nginx ws.conf (available)' ['/etc/nginx/nginx.conf']='nginx.conf' ['/opt/socks5tun/scripts/nat6_setup.sh']='nat6_setup.sh' ['/opt/socks5tun/scripts/update_cf_ufw.sh']='update_cf_ufw.sh (Cloudflare UFW) - optional')
++ declare -A FILE_DUMPS
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/systemd/system/socks5_healthcheck.service socks5_healthcheck.service
++ local path=/etc/systemd/system/socks5_healthcheck.service
++ local title=socks5_healthcheck.service
++ local 'cmd= cat "/etc/systemd/system/socks5_healthcheck.service"'
++ [[ -f /etc/systemd/system/socks5_healthcheck.service ]]
++ return 0
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/nginx/nginx.conf nginx.conf
++ local path=/etc/nginx/nginx.conf
++ local title=nginx.conf
++ local 'cmd= cat "/etc/nginx/nginx.conf"'
++ [[ -f /etc/nginx/nginx.conf ]]
++ echo -e '\n# --- nginx.conf ---'
++ eval ' cat "/etc/nginx/nginx.conf"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /opt/socks5tun/scripts/update_cf_ufw.sh 'update_cf_ufw.sh (Cloudflare UFW) - optional'
++ local path=/opt/socks5tun/scripts/update_cf_ufw.sh
++ local 'title=update_cf_ufw.sh (Cloudflare UFW) - optional'
++ local 'cmd= cat "/opt/socks5tun/scripts/update_cf_ufw.sh"'
++ [[ -f /opt/socks5tun/scripts/update_cf_ufw.sh ]]
++ echo -e '\n# --- update_cf_ufw.sh (Cloudflare UFW) - optional ---'
++ eval ' cat "/opt/socks5tun/scripts/update_cf_ufw.sh"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /var/lib/socks5health/last_status last_status
++ local path=/var/lib/socks5health/last_status
++ local title=last_status
++ local 'cmd= cat "/var/lib/socks5health/last_status"'
++ [[ -f /var/lib/socks5health/last_status ]]
++ echo -e '\n# --- last_status ---'
++ eval ' cat "/var/lib/socks5health/last_status"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/systemd/system/socks5tun-update.service socks5tun-update.service
++ local path=/etc/systemd/system/socks5tun-update.service
++ local title=socks5tun-update.service
++ local 'cmd= cat "/etc/systemd/system/socks5tun-update.service"'
++ [[ -f /etc/systemd/system/socks5tun-update.service ]]
++ echo -e '\n# --- socks5tun-update.service ---'
++ eval ' cat "/etc/systemd/system/socks5tun-update.service"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/ssh/sshd_config sshd_config
++ local path=/etc/ssh/sshd_config
++ local title=sshd_config
++ local 'cmd= cat "/etc/ssh/sshd_config"'
++ [[ -f /etc/ssh/sshd_config ]]
++ echo -e '\n# --- sshd_config ---'
++ eval ' cat "/etc/ssh/sshd_config"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /usr/local/bin/socks5_telegram_alert.sh socks5_telegram_alert.sh
++ local path=/usr/local/bin/socks5_telegram_alert.sh
++ local title=socks5_telegram_alert.sh
++ local 'cmd= cat "/usr/local/bin/socks5_telegram_alert.sh"'
++ [[ -f /usr/local/bin/socks5_telegram_alert.sh ]]
++ echo -e '\n# --- socks5_telegram_alert.sh ---'
++ eval ' cat "/usr/local/bin/socks5_telegram_alert.sh"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/tmpfiles.d/stunnel.conf tmpfiles-stunnel.conf
++ local path=/etc/tmpfiles.d/stunnel.conf
++ local title=tmpfiles-stunnel.conf
++ local 'cmd= cat "/etc/tmpfiles.d/stunnel.conf"'
++ [[ -f /etc/tmpfiles.d/stunnel.conf ]]
++ echo -e '\n# --- tmpfiles-stunnel.conf ---'
++ eval ' cat "/etc/tmpfiles.d/stunnel.conf"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/systemd/system/socks5tun.service socks5tun.service
++ local path=/etc/systemd/system/socks5tun.service
++ local title=socks5tun.service
++ local 'cmd= cat "/etc/systemd/system/socks5tun.service"'
++ [[ -f /etc/systemd/system/socks5tun.service ]]
++ echo -e '\n# --- socks5tun.service ---'
++ eval ' cat "/etc/systemd/system/socks5tun.service"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /usr/local/bin/update_socks5tun.sh update_socks5tun.sh
++ local path=/usr/local/bin/update_socks5tun.sh
++ local title=update_socks5tun.sh
++ local 'cmd= cat "/usr/local/bin/update_socks5tun.sh"'
++ [[ -f /usr/local/bin/update_socks5tun.sh ]]
++ echo -e '\n# --- update_socks5tun.sh ---'
++ eval ' cat "/usr/local/bin/update_socks5tun.sh"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/init.d/stunnel4 'init.d stunnel4'
++ local path=/etc/init.d/stunnel4
++ local 'title=init.d stunnel4'
++ local 'cmd= cat "/etc/init.d/stunnel4"'
++ [[ -f /etc/init.d/stunnel4 ]]
++ echo -e '\n# --- init.d stunnel4 ---'
++ eval ' cat "/etc/init.d/stunnel4"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/systemd/system/stunnel.service 'stunnel.service (alt)'
++ local path=/etc/systemd/system/stunnel.service
++ local 'title=stunnel.service (alt)'
++ local 'cmd= cat "/etc/systemd/system/stunnel.service"'
++ [[ -f /etc/systemd/system/stunnel.service ]]
++ echo -e '\n# --- stunnel.service (alt) ---'
++ eval ' cat "/etc/systemd/system/stunnel.service"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/nginx/sites-available/ws.conf 'nginx ws.conf (available)'
++ local path=/etc/nginx/sites-available/ws.conf
++ local 'title=nginx ws.conf (available)'
++ local 'cmd= cat "/etc/nginx/sites-available/ws.conf"'
++ [[ -f /etc/nginx/sites-available/ws.conf ]]
++ echo -e '\n# --- nginx ws.conf (available) ---'
++ eval ' cat "/etc/nginx/sites-available/ws.conf"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /opt/socks5tun/scripts/nat6_setup.sh nat6_setup.sh
++ local path=/opt/socks5tun/scripts/nat6_setup.sh
++ local title=nat6_setup.sh
++ local 'cmd= cat "/opt/socks5tun/scripts/nat6_setup.sh"'
++ [[ -f /opt/socks5tun/scripts/nat6_setup.sh ]]
++ echo -e '\n# --- nat6_setup.sh ---'
++ eval ' cat "/opt/socks5tun/scripts/nat6_setup.sh"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/stunnel/stunnel.conf stunnel.conf
++ local path=/etc/stunnel/stunnel.conf
++ local title=stunnel.conf
++ local 'cmd= cat "/etc/stunnel/stunnel.conf"'
++ [[ -f /etc/stunnel/stunnel.conf ]]
++ echo -e '\n# --- stunnel.conf ---'
++ eval ' cat "/etc/stunnel/stunnel.conf"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/resolv.conf resolv.conf
++ local path=/etc/resolv.conf
++ local title=resolv.conf
++ local 'cmd= cat "/etc/resolv.conf"'
++ [[ -f /etc/resolv.conf ]]
++ echo -e '\n# --- resolv.conf ---'
++ eval ' cat "/etc/resolv.conf"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /usr/local/bin/socks5_healthcheck.sh socks5_healthcheck.sh
++ local path=/usr/local/bin/socks5_healthcheck.sh
++ local title=socks5_healthcheck.sh
++ local 'cmd= cat "/usr/local/bin/socks5_healthcheck.sh"'
++ [[ -f /usr/local/bin/socks5_healthcheck.sh ]]
++ echo -e '\n# --- socks5_healthcheck.sh ---'
++ eval ' cat "/usr/local/bin/socks5_healthcheck.sh"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/systemd/system/ws-bridge.service ws-bridge.service
++ local path=/etc/systemd/system/ws-bridge.service
++ local title=ws-bridge.service
++ local 'cmd= cat "/etc/systemd/system/ws-bridge.service"'
++ [[ -f /etc/systemd/system/ws-bridge.service ]]
++ echo -e '\n# --- ws-bridge.service ---'
++ eval ' cat "/etc/systemd/system/ws-bridge.service"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/systemd/system/socks5-healthcheck.timer socks5_healthcheck.timer
++ local path=/etc/systemd/system/socks5-healthcheck.timer
++ local title=socks5_healthcheck.timer
++ local 'cmd= cat "/etc/systemd/system/socks5-healthcheck.timer"'
++ [[ -f /etc/systemd/system/socks5-healthcheck.timer ]]
++ echo -e '\n# --- socks5_healthcheck.timer ---'
++ eval ' cat "/etc/systemd/system/socks5-healthcheck.timer"'
++ for path in "${!FILE_DUMPS[@]}"
++ append_cfg /etc/systemd/system/restart-socks5tun@.service restart-socks5tun@.service
++ local path=/etc/systemd/system/restart-socks5tun@.service
++ local title=restart-socks5tun@.service
++ local 'cmd= cat "/etc/systemd/system/restart-socks5tun@.service"'
++ [[ -f /etc/systemd/system/restart-socks5tun@.service ]]
++ echo -e '\n# --- restart-socks5tun@.service ---'
++ eval ' cat "/etc/systemd/system/restart-socks5tun@.service"'
++ [[ -L /etc/nginx/sites-enabled/ws.conf ]]
++ echo -e '\n# --- nginx ws.conf symlink ---'
++ ls -l /etc/nginx/sites-enabled/ws.conf
+++ readlink -f /etc/nginx/sites-enabled/ws.conf
++ REAL_TARGET=/etc/nginx/sites-available/ws.conf
++ [[ -n /etc/nginx/sites-available/ws.conf ]]
++ [[ -f /etc/nginx/sites-available/ws.conf ]]
++ echo -e '\n# --- nginx ws.conf (resolved target) ---'
++ cat /etc/nginx/sites-available/ws.conf
++ [[ -f /var/log/nginx/ws_access.log ]]
++ echo -e '\n# --- /var/log/nginx/ws_access.log (tail -n 20) ---'
++ tail -n 20 /var/log/nginx/ws_access.log
++ command -v openssl
++ append_cfg /etc/stunnel/stunnel.pem '/etc/stunnel/stunnel.pem (x509-dump)' 'openssl x509 -in /etc/stunnel/stunnel.pem -noout -text'
++ local path=/etc/stunnel/stunnel.pem
++ local 'title=/etc/stunnel/stunnel.pem (x509-dump)'
++ local 'cmd=openssl x509 -in /etc/stunnel/stunnel.pem -noout -text'
++ [[ -f /etc/stunnel/stunnel.pem ]]
++ echo -e '\n# --- /etc/stunnel/stunnel.pem (x509-dump) ---'
++ eval 'openssl x509 -in /etc/stunnel/stunnel.pem -noout -text'
++ summarize
++ echo
++ log_info '📦 Файлы успешно собраны:'
++ echo -e '[INFO] 📦 Файлы успешно собраны:'
++ for f in "$OUT_FILE" "$MOD_FILE" "$MISC_FILE" "$TREE_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE"
++ [[ -f diagnostics/socks5_diagnostics.txt ]]
+++ cut -f1
+++ du -h diagnostics/socks5_diagnostics.txt
++ log_info '  • diagnostics/socks5_diagnostics.txt (44K)'
++ echo -e '[INFO]   • diagnostics/socks5_diagnostics.txt (44K)'
++ for f in "$OUT_FILE" "$MOD_FILE" "$MISC_FILE" "$TREE_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE"
++ [[ -f diagnostics/socks5tun_modules.txt ]]
+++ du -h diagnostics/socks5tun_modules.txt
+++ cut -f1
++ log_info '  • diagnostics/socks5tun_modules.txt (88K)'
++ echo -e '[INFO]   • diagnostics/socks5tun_modules.txt (88K)'
++ for f in "$OUT_FILE" "$MOD_FILE" "$MISC_FILE" "$TREE_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE"
++ [[ -f diagnostics/misc_files.txt ]]
+++ du -h diagnostics/misc_files.txt
+++ cut -f1
++ log_info '  • diagnostics/misc_files.txt (888K)'
++ echo -e '[INFO]   • diagnostics/misc_files.txt (888K)'
++ for f in "$OUT_FILE" "$MOD_FILE" "$MISC_FILE" "$TREE_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE"
++ [[ -f diagnostics/project_tree.txt ]]
+++ du -h diagnostics/project_tree.txt
+++ cut -f1
++ log_info '  • diagnostics/project_tree.txt (4.0K)'
++ echo -e '[INFO]   • diagnostics/project_tree.txt (4.0K)'
++ for f in "$OUT_FILE" "$MOD_FILE" "$MISC_FILE" "$TREE_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE"
++ [[ -f diagnostics/structure_index.txt ]]
+++ du -h diagnostics/structure_index.txt
+++ cut -f1
++ log_info '  • diagnostics/structure_index.txt (4.0K)'
++ echo -e '[INFO]   • diagnostics/structure_index.txt (4.0K)'
++ for f in "$OUT_FILE" "$MOD_FILE" "$MISC_FILE" "$TREE_FILE" "$STRUCTURE_FILE" "$CONFIG_FILE"
++ [[ -f diagnostics/server_configs.txt ]]
+++ du -h diagnostics/server_configs.txt
+++ cut -f1
++ log_info '  • diagnostics/server_configs.txt (144K)'
++ echo -e '[INFO]   • diagnostics/server_configs.txt (144K)'
++ log_info '✅ Диагностика завершена'
++ echo -e '[INFO] ✅ Диагностика завершена'

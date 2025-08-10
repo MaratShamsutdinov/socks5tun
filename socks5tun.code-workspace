@@ -5,6 +5,7 @@
     }
   ],
   "settings": {
-    "djlint.showInstallError": false
+    "djlint.showInstallError": false,
+    "cSpell.words": ["ltnp", "билд"]
   }
 }

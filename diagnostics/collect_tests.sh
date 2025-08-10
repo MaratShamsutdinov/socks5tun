@@ -140,7 +140,7 @@ collect_misc() {
 }
 
 # ----------------------------------------------------------------------------
-# 7. dump_configs – сетевые/системные конфиги и вывод команд
+# 7. dump_configs – сетевые/системные конфиги и вывод команд (без stunnel)
 # ----------------------------------------------------------------------------
 append_cfg() {
   local path="$1"; local title="${2:-$1}"; local cmd="${3:-$USE_SUDO cat \"$path\"}"
@@ -155,6 +155,13 @@ append_cmd() {
   eval "$cmd" >>"$CONFIG_FILE" 2>/dev/null || echo "[$title недоступно]" >>"$CONFIG_FILE"
 }
 
+append_cmd_sh() {
+  local title="$1"; shift
+  echo -e "\n# --- $title ---" >>"$CONFIG_FILE"
+  $USE_SUDO bash -lc "$*" >>"$CONFIG_FILE" 2>&1 \
+    || echo "[$title недоступно]" >>"$CONFIG_FILE"
+}
+
 dump_configs() {
   log_info "=== SERVER CONFIGS ===" >>"$CONFIG_FILE"
   USE_SUDO=""; [[ $EUID -ne 0 ]] && USE_SUDO="sudo"
@@ -162,55 +169,58 @@ dump_configs() {
   # команды
   declare -A CMDS=(
     ["ufw status"]="$USE_SUDO ufw status verbose | sed -r 's/\\x1B\\[[0-9;]*[mK]//g'"
+    ["ufw status numbered"]="$USE_SUDO ufw status numbered"
+    ["nft list ruleset"]="$USE_SUDO nft list ruleset"
     ["iptables-save"]="$USE_SUDO iptables-save"
     ["sysctl ip_forward/tcp"]="$USE_SUDO sysctl -a | grep -E 'net\\.ipv4\\.ip_forward|^tcp_'"
-    ["ip a"]="ip a"
-    ["ip r"]="ip r"
-    ["ss -tunlp"]="(command -v ss &>/dev/null && (ss -tunlp || $USE_SUDO ss -tunlp))"
-    ["systemctl running"]="$USE_SUDO systemctl list-units --type=service --state=running"
-    ["crontab root"]="$USE_SUDO crontab -l -u root"
-    ["dpkg (net)"]="dpkg -l | grep -Ei 'openvpn|stunnel|iptables|wireguard|net-tools|nginx'"
-    ["journal socks5tun"]="$USE_SUDO journalctl -u socks5tun.service --no-pager -n 100 | sed -r 's/\\x1B\\[[0-9;]*[mK]//g'"
-    ["nft list ruleset"]="$USE_SUDO nft list ruleset"
-    ["pip freeze"]="pip freeze"
 
-    # --- добавлено для WS-моста/NGINX ---
+    ["ip a"]="$USE_SUDO ip a"
+    ["ip r"]="$USE_SUDO ip r"
+    ["ss -tunlp"]="(command -v ss &>/dev/null && (ss -tunlp || $USE_SUDO ss -tunlp))"
+
+    ["systemctl running"]="$USE_SUDO systemctl list-units --type=service --state=running"
+    ["systemd timers"]="$USE_SUDO systemctl list-timers --all --no-pager"
+    ["crontab root"]="$USE_SUDO crontab -l -u root"
+
+    # пакеты по сети/вебу (исключаем iptables-persistent и stunnel)
+    ["dpkg (net)"]="dpkg -l | grep -Ei 'iptables|net-tools|nginx|bind9|strongswan|prometheus|grafana' | grep -Ev 'iptables-persistent|stunnel'"
+
+    ["journal socks5tun"]="$USE_SUDO journalctl -u socks5tun.service --no-pager -n 100 | sed -r 's/\\x1B\\[[0-9;]*[mK]//g'"
     ["systemctl ws-bridge"]="$USE_SUDO systemctl status ws-bridge --no-pager"
     ["journal ws-bridge"]="$USE_SUDO journalctl -u ws-bridge --no-pager -n 200 | sed -r 's/\\x1B\\[[0-9;]*[mK]//g'"
+
     ["nginx -T"]="$USE_SUDO nginx -T"
-    ["websocat --version"]="/usr/local/bin/websocat --version || websocat --version"
-    ["listen 80/5001/5000"]="ss -ltnp | egrep ':80\\b|:5001\\b|:5000\\b' || true"
-    # кто слушает ещё и 11443 (stunnel) и 443 на всякий случай
-    ["listen 80/443/11443/5001/5000"]='ss -ltnp | egrep ":80\b|:443\b|:11443\b|:5001\b|:5000\b" || true'
-
-    # статусы сервисов и их enable-флаги
-    ["systemctl is-enabled (nginx/ws-bridge/socks5tun/stunnel)"]='$USE_SUDO bash -lc "for s in nginx ws-bridge socks5tun stunnel; do echo -n \"$s: \"; systemctl is-enabled $s 2>/dev/null || echo not-found; done"'
-    ["systemctl is-active  (nginx/ws-bridge/socks5tun/stunnel)"]='$USE_SUDO bash -lc "for s in nginx ws-bridge socks5tun stunnel; do echo -n \"$s: \"; systemctl is-active  $s 2>/dev/null || echo not-found; done"'
-
-    # конкретно про stunnel
-    ["systemctl status stunnel"]="$USE_SUDO systemctl status stunnel --no-pager"
-    ["systemctl cat stunnel"]="$USE_SUDO systemctl cat stunnel"
-
-    # ufw — с номерами, чтобы было видно порядок
-    ["ufw status numbered"]="$USE_SUDO ufw status numbered"
-
-    # nginx билд-опции (в т.ч. http_v2)
     ["nginx -V"]="$USE_SUDO nginx -V 2>&1"
 
-    # таймеры (на будущее, если добавим systemd timer для UFW)
-    ["systemd timers"]="$USE_SUDO systemctl list-timers --all --no-pager"
+    ["websocat --version"]="/usr/local/bin/websocat --version || websocat --version"
+
+    # кто слушает важные порты (без 11443 и 443)
+    ["listen 80/5001/5000"]="ss -ltnp | egrep ':80\\b|:5001\\b|:5000\\b' || true"
 
     # где лежит/на что ссылается скрипт UFW
     ["update_cf_ufw.sh target"]='ls -l /usr/local/sbin/update_cf_ufw.sh; readlink -f /usr/local/sbin/update_cf_ufw.sh || true'
 
-    # журнал блокировок UFW (если включено логирование)
+    # журнал блокировок UFW (если доступен)
     ["/var/log/ufw.log tail"]="$USE_SUDO tail -n 100 /var/log/ufw.log 2>/dev/null || true"
+
+    # питон-зависимости проекта
+    ["pip freeze"]="pip freeze"
   )
   for k in "${!CMDS[@]}"; do append_cmd "$k" "${CMDS[$k]}"; done
 
-  # файлы через ассоциативный массив
+  # enable/active статусы только нужных юнитов
+  append_cmd_sh "systemctl is-enabled (nginx/ws-bridge/socks5tun)" \
+    'for s in nginx ws-bridge socks5tun; do
+       echo -n "$s: "; systemctl is-enabled "$s" 2>/dev/null || echo not-found
+     done'
+
+  append_cmd_sh "systemctl is-active (nginx/ws-bridge/socks5tun)" \
+    'for s in nginx ws-bridge socks5tun; do
+       echo -n "$s: "; systemctl is-active "$s"  2>/dev/null || echo not-found
+     done'
+
+  # файлы/юниты (без всего, что касается stunnel)
   declare -A FILE_DUMPS=(
-    ["/etc/stunnel/stunnel.conf"]="stunnel.conf"
     ["/etc/systemd/system/socks5tun.service"]="socks5tun.service"
     ["/etc/ssh/sshd_config"]="sshd_config"
     ["/etc/systemd/system/socks5tun-update.service"]="socks5tun-update.service"
@@ -220,19 +230,15 @@ dump_configs() {
     ["/etc/systemd/system/restart-socks5tun@.service"]="restart-socks5tun@.service"
     ["/usr/local/bin/socks5_healthcheck.sh"]="socks5_healthcheck.sh"
     ["/usr/local/bin/socks5_telegram_alert.sh"]="socks5_telegram_alert.sh"
-    ["/etc/systemd/system/stunnel.service"]="stunnel.service (alt)"
-    ["/etc/tmpfiles.d/stunnel.conf"]="tmpfiles-stunnel.conf"
-    ["/etc/init.d/stunnel4"]="init.d stunnel4"
+
+    ["/etc/systemd/system/ws-bridge.service"]="ws-bridge.service"
+    ["/etc/nginx/sites-available/ws.conf"]="nginx ws.conf (available)"
+    ["/etc/nginx/nginx.conf"]="nginx.conf"
+
     ["/etc/resolv.conf"]="resolv.conf"
     ["/var/lib/socks5health/last_status"]="last_status"
 
-    # --- добавлено: WS-мост и nginx WS-конфиг ---
-    ["/etc/systemd/system/ws-bridge.service"]="ws-bridge.service"
-    ["/etc/nginx/sites-available/ws.conf"]="nginx ws.conf (available)"
-    # симлинк покажем отдельно ниже
-    ["/etc/nginx/nginx.conf"]="nginx.conf"
-
-    # твои проектные скрипты
+    # проектные скрипты
     ["/opt/socks5tun/scripts/nat6_setup.sh"]="nat6_setup.sh"
     ["/opt/socks5tun/scripts/update_cf_ufw.sh"]="update_cf_ufw.sh (Cloudflare UFW) - optional"
   )
@@ -240,7 +246,7 @@ dump_configs() {
     append_cfg "$path" "${FILE_DUMPS[$path]}"
   done
 
-  # симлинк sites-enabled → покажем сам линк и целевой путь
+  # симлинк sites-enabled → целевой ws.conf
   if [[ -L /etc/nginx/sites-enabled/ws.conf ]]; then
     echo -e "\n# --- nginx ws.conf symlink ---" >>"$CONFIG_FILE"
     ls -l /etc/nginx/sites-enabled/ws.conf >>"$CONFIG_FILE" 2>/dev/null || true
@@ -251,21 +257,12 @@ dump_configs() {
     fi
   fi
 
-  # логи nginx по WS — только хвост, чтобы не раздуть файл
+  # логи nginx по WS — только хвост
   if [[ -f /var/log/nginx/ws_access.log ]]; then
     echo -e "\n# --- /var/log/nginx/ws_access.log (tail -n 20) ---" >>"$CONFIG_FILE"
     $USE_SUDO tail -n 20 /var/log/nginx/ws_access.log >>"$CONFIG_FILE" 2>/dev/null || true
   fi
-
-  # stunnel.pem публичная часть
-  if command -v openssl &>/dev/null; then
-    append_cfg /etc/stunnel/stunnel.pem \
-      "/etc/stunnel/stunnel.pem (x509-dump)" \
-      "openssl x509 -in /etc/stunnel/stunnel.pem -noout -text"
-  fi
 }
-
-
 
 # ----------------------------------------------------------------------------
 # 8. summarize – финальная сводка размеров файлов
@@ -301,4 +298,6 @@ main() {
   summarize
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
